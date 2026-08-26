@@ -56,6 +56,8 @@ Next.js App Router + TypeScript + microCMS + Vercel で構築する。
 
 秘密情報はGit管理しない。Vercel関連の値はGitHub Actions Secretsに設定する。
 
+Vercel CLIでローカルリンクした場合に生成される `.vercel/` はGit管理しない。`projectId` と `orgId` はGitHub Actions Secretsへ登録する。
+
 ## Docker Development Flow
 
 リポジトリに以下を用意する。
