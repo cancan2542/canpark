@@ -180,6 +180,8 @@ GitHub Actionsで `main` push時にproduction deployする。
 
 Deploy jobはquality gate jobの成功後にだけ実行する。
 
+Secrets更新後やVercel側の一時障害後に再実行できるよう、CI workflowは手動実行にも対応する。
+
 Vercel CLIでproduction deployするため、GitHub Actions Secretsに以下を登録する。
 
 - `VERCEL_TOKEN`
