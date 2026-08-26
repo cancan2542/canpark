@@ -14,3 +14,5 @@ docker compose run --rm app pnpm lint
 docker compose run --rm app pnpm test
 docker compose run --rm app pnpm build
 ```
+
+Production deployment is handled by Vercel Git Integration on `main` pushes. GitHub Actions is used as a quality gate only.
