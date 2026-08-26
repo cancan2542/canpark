@@ -50,13 +50,10 @@ Next.js App Router + TypeScript + microCMS + Vercel で構築する。
 - `MICROCMS_PREVIEW_API_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 - `REVALIDATE_SECRET`
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
 
-秘密情報はGit管理しない。Vercel関連の値はGitHub Actions Secretsに設定する。
+秘密情報はGit管理しない。
 
-Vercel CLIでローカルリンクした場合に生成される `.vercel/` はGit管理しない。`projectId` と `orgId` はGitHub Actions Secretsへ登録する。
+Vercel CLIでローカルリンクした場合に生成される `.vercel/` はGit管理しない。
 
 ## Docker Development Flow
 
@@ -133,7 +130,7 @@ Issue駆動で進める。
 6. `typecheck`、`lint`、`test`、`test:e2e`、`build` を通す
 7. `main` へマージする
 8. `main` をpushする
-9. GitHub Actionsが品質ゲートを通した後、Vercel productionへdeployする
+9. Vercel Git Integrationが `main` pushを検知し、productionへdeployする
 
 ブランチ命名。
 
@@ -174,19 +171,25 @@ mainに入れる前に以下を必須にする。
 
 CIでも同じコマンドを実行する。
 
-## Deployment Flow
+## CI and Deployment Flow
 
-GitHub Actionsで `main` push時にproduction deployする。
+GitHub Actionsは品質ゲート専用にする。
 
-Deploy jobはquality gate jobの成功後にだけ実行する。
+GitHub Actionsでは以下を実行する。
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm test:e2e`
+- `pnpm build`
+
+Production deployはVercel Git Integrationに一本化する。
+
+`main` push時にVercelがGitHub連携経由でproduction deploymentを作成する。
+
+GitHub Actionsから `vercel deploy --prod` は実行しない。Vercel Git IntegrationとGitHub Actions deploy jobの二重デプロイを避けるため。
 
 Secrets更新後やVercel側の一時障害後に再実行できるよう、CI workflowは手動実行にも対応する。
-
-Vercel CLIでproduction deployするため、GitHub Actions Secretsに以下を登録する。
-
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
 
 microCMS更新時は `REVALIDATE_SECRET` で保護したrevalidate endpointを呼ぶ。
 
