@@ -10,6 +10,21 @@ describe("getSiteUrl", () => {
     expect(getSiteUrl("https://canpark.example/").origin).toBe("https://canpark.example");
   });
 
+  it("keeps localhost available outside Vercel production", () => {
+    expect(getSiteUrl("http://localhost:3000", "development").origin).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  it.each(["localhost", "127.0.0.1", "[::1]"])(
+    "falls back to the current production host when %s is configured for Vercel production",
+    (hostname) => {
+      expect(getSiteUrl(`http://${hostname}:3000`, "production").href).toBe(
+        `https://${LEGACY_PRODUCTION_HOST}/`,
+      );
+    },
+  );
+
   it.each([
     "ftp://canpark.example",
     "https://user:password@canpark.example",

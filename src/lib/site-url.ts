@@ -1,7 +1,10 @@
 export const LEGACY_PRODUCTION_HOST = "canpark-xi.vercel.app";
 const DEFAULT_SITE_URL = `https://${LEGACY_PRODUCTION_HOST}`;
 
-export function getSiteUrl(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): URL {
+export function getSiteUrl(
+  configuredUrl = process.env.NEXT_PUBLIC_SITE_URL,
+  deploymentEnvironment = process.env.VERCEL_ENV,
+): URL {
   const siteUrl = new URL(configuredUrl?.trim() || DEFAULT_SITE_URL);
 
   if (!["http:", "https:"].includes(siteUrl.protocol)) {
@@ -18,6 +21,13 @@ export function getSiteUrl(configuredUrl = process.env.NEXT_PUBLIC_SITE_URL): UR
     throw new Error(
       "NEXT_PUBLIC_SITE_URL must be an origin without credentials, path, query, or hash",
     );
+  }
+
+  if (
+    deploymentEnvironment === "production" &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(siteUrl.hostname)
+  ) {
+    return new URL(DEFAULT_SITE_URL);
   }
 
   return siteUrl;
