@@ -17,9 +17,10 @@ export function SiteMap({ spots, zoom = 6 }: SiteMapProps) {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const container = containerRef.current;
     const center = averageCoordinates(spots);
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container,
       style: {
         version: 8,
         sources: {
@@ -42,6 +43,10 @@ export function SiteMap({ spots, zoom = 6 }: SiteMapProps) {
       zoom,
     });
 
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(container);
+    const animationFrame = requestAnimationFrame(() => map.resize());
+
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     spots.forEach((spot) => {
@@ -57,7 +62,11 @@ export function SiteMap({ spots, zoom = 6 }: SiteMapProps) {
         .addTo(map);
     });
 
-    return () => map.remove();
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+      map.remove();
+    };
   }, [spots, zoom]);
 
   return (
