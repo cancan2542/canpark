@@ -30,11 +30,14 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: MunicipalityPageProps): Promise<Metadata> {
-  const { municipality } = await params;
+  const { prefecture, municipality } = await params;
   const region = await getRegionBySlug(municipality);
 
   return {
     title: region ? `${region.name}の車中泊スポット` : "市区町村",
+    alternates: {
+      canonical: `/prefectures/${prefecture}/${municipality}`,
+    },
   };
 }
 

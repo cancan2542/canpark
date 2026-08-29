@@ -22,6 +22,9 @@ export async function generateMetadata({ params }: SpotPageProps): Promise<Metad
   return {
     title: spot ? `${spot.title}の車中泊メモ` : "スポット",
     description: spot?.body,
+    alternates: {
+      canonical: `/spots/${slug}`,
+    },
   };
 }
 
