@@ -13,6 +13,8 @@ services:
     environment:
       NEXT_TELEMETRY_DISABLED: "1"
       WATCHPACK_POLLING: "true"
+      MICROCMS_SERVICE_DOMAIN: ${MICROCMS_SERVICE_DOMAIN:-}
+      MICROCMS_API_KEY: ${MICROCMS_API_KEY:-}
     env_file:
       - path: .env.local
         required: false

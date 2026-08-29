@@ -11,7 +11,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "cms:create-test-article": "node scripts/create-microcms-test-spot.mjs"
   },
   "dependencies": {
     "maplibre-gl": "^4.7.1",
