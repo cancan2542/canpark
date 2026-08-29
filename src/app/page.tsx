@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { DisclaimerNotice } from "@/components/DisclaimerNotice";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SiteMap } from "@/components/SiteMap";
 import { SpotCard } from "@/components/SpotCard";
 import { getPrefectures, getSpots, toMapSpots } from "@/lib/content";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default async function HomePage() {
   const [prefectures, spots] = await Promise.all([getPrefectures(), getSpots()]);

@@ -27,6 +27,9 @@ export async function generateMetadata({ params }: PrefecturePageProps): Promise
 
   return {
     title: region ? `${region.name}の車中泊スポット` : "都道府県",
+    alternates: {
+      canonical: `/prefectures/${prefecture}`,
+    },
   };
 }
 
