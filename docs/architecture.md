@@ -48,7 +48,6 @@ Next.js App Router + TypeScript + microCMS + Vercel で構築する。
 - `MICROCMS_SERVICE_DOMAIN`
 - `MICROCMS_API_KEY`
 - `MICROCMS_PREVIEW_API_KEY`
-- `NEXT_PUBLIC_SITE_URL`
 - `REVALIDATE_SECRET`
 
 秘密情報はGit管理しない。
