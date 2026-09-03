@@ -4,7 +4,6 @@ import {
   getSiteUrl,
   LEGACY_PRODUCTION_HOST,
   PRODUCTION_SITE_ORIGIN,
-  WWW_PRODUCTION_HOST,
 } from "@/lib/site-url";
 
 describe("getSiteUrl", () => {
@@ -14,14 +13,8 @@ describe("getSiteUrl", () => {
 });
 
 describe("getCanonicalHostRedirects", () => {
-  it("redirects every path on non-canonical hosts to the apex domain", () => {
+  it("redirects every path on the legacy host to the apex domain", () => {
     expect(getCanonicalHostRedirects()).toEqual([
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: WWW_PRODUCTION_HOST }],
-        destination: `${PRODUCTION_SITE_ORIGIN}/:path*`,
-        permanent: true,
-      },
       {
         source: "/:path*",
         has: [{ type: "host", value: LEGACY_PRODUCTION_HOST }],
