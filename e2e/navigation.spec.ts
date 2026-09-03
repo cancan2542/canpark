@@ -17,7 +17,7 @@ test("top page links through regional navigation", async ({ page }) => {
   if (!spotTitle) throw new Error("Spot link title was empty.");
   await spotLink.click();
   await expect(page.getByRole("heading", { name: spotTitle })).toBeVisible();
-  await expect(page.getByText("ハザード確認")).toBeVisible();
+  await expect(page.getByText("ハザード確認", { exact: true })).toBeVisible();
   await expect(page.getByText("現地Tips")).toBeVisible();
   await expect(page.getByRole("link", { name: "免責事項を確認する" })).toBeVisible();
 });
