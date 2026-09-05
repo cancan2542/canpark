@@ -190,7 +190,7 @@ GitHub Actionsでは以下を実行する。
 - 本番・開発依存とDockerfile設定の脆弱性スキャン
 - productionコンテナのビルドとHigh/Critical脆弱性スキャン
 
-GitHub Actionsは `contents: read` の最小権限で実行し、外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。CI一式はpush・Pull Requestに加えて毎週月曜9:00（JST）に実行し、依存・Action・DockerイメージはDependabotで週次確認する。
+GitHub Actionsは `contents: read` の最小権限で実行し、外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。CI一式はpush・Pull Requestに加えて毎週月曜9:17（JST）に実行し、依存・Action・DockerイメージはDependabotで週次確認する。定期実行はGitHub Actionsの混雑が集中しやすい毎時0分を避ける。
 
 Production deployはVercel Git Integrationに一本化する。
 
