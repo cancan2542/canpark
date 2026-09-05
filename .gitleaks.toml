@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore generated dependencies and build artifacts in working-tree scans"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.next/''',
+  '''(^|/)\.pnpm-store/''',
+  '''(^|/)(coverage|playwright-report|test-results)/''',
+]
