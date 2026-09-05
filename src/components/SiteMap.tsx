@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { averageCoordinates } from "@/lib/location";
+import { createMapPopupContent } from "@/lib/map-popup";
 import type { MapSpot } from "@/types/content";
 
 type SiteMapProps = {
@@ -52,9 +53,7 @@ export function SiteMap({ spots, zoom = 6 }: SiteMapProps) {
     spots.forEach((spot) => {
       if (!spot.coordinates) return;
 
-      const popup = new maplibregl.Popup({ offset: 16 }).setHTML(
-        `<strong>${spot.title}</strong><br />${spot.prefecture} ${spot.municipality}`,
-      );
+      const popup = new maplibregl.Popup({ offset: 16 }).setDOMContent(createMapPopupContent(spot));
 
       new maplibregl.Marker({ color: "#1f5b49" })
         .setLngLat([spot.coordinates.longitude, spot.coordinates.latitude])
