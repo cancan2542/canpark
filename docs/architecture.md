@@ -16,6 +16,7 @@ Next.js App Router + TypeScript + microCMS + Vercel で構築する。
 - Language: TypeScript
 - Package Manager: pnpm
 - Runtime: Node.js LTS
+- Production Container Runtime: Distroless Node.js 22 (Debian 13, nonroot, digest pinned)
 - CMS: microCMS
 - Hosting: Vercel
 - Map: MapLibre GL JS
@@ -70,7 +71,9 @@ Vercel CLIでローカルリンクした場合に生成される `.vercel/` はG
 - `docker compose run --rm app pnpm lint`: lint
 - `docker compose run --rm app pnpm typecheck`: TypeScript型チェック
 - `docker compose run --rm app pnpm build`: production build
-- `docker run --rm -v <repo>:/app -w /app node:22-bookworm-slim corepack pnpm install`: lockfile生成/依存更新
+- `docker compose run --rm app pnpm install`: lockfile生成/依存更新
+
+開発サーバーの公開先は `127.0.0.1:3000` に限定する。production runnerはビルド環境と分離し、シェルやパッケージマネージャーを含まないDistrolessイメージを非rootユーザーで実行する。ベースイメージはdigestで固定し、Dependabotで更新する。
 
 Mac/WindowsのDocker開発ではファイル監視が不安定な場合があるため、必要に応じてpolling設定を使う。
 
@@ -167,6 +170,8 @@ mainに入れる前に以下を必須にする。
 - `pnpm test`
 - `pnpm test:e2e`
 - `pnpm build`
+- GitleaksによるGit履歴の秘密情報スキャン
+- Trivyによる依存関係、Docker設定、productionイメージの脆弱性スキャン
 
 CIでも同じコマンドを実行する。
 
@@ -181,6 +186,11 @@ GitHub Actionsでは以下を実行する。
 - `pnpm test`
 - `pnpm test:e2e`
 - `pnpm build`
+- Git全履歴の秘密情報スキャン
+- 本番・開発依存とDockerfile設定の脆弱性スキャン
+- productionコンテナのビルドとHigh/Critical脆弱性スキャン
+
+GitHub Actionsは `contents: read` の最小権限で実行し、外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。CI一式はpush・Pull Requestに加えて毎週月曜9:17（JST）に実行し、依存・Action・DockerイメージはDependabotで週次確認する。定期実行はGitHub Actionsの混雑が集中しやすい毎時0分を避ける。
 
 Production deployはVercel Git Integrationに一本化する。
 

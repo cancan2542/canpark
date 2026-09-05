@@ -2,20 +2,40 @@ name: CI
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 0 * * 1"
   pull_request:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan Git history for secrets
+        run: >-
+          docker run --rm --volume "$PWD:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --config /repo/.gitleaks.toml --redact --no-banner
+      - name: Scan dependencies and configuration
+        run: >-
+          docker run --rm --volume "$PWD:/repo:ro"
+          --volume "trivy-cache:/root/.cache/trivy"
+          aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          fs --scanners vuln,misconfig --include-dev-deps
+          --severity HIGH,CRITICAL --exit-code 1 --quiet /repo
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: 10.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -26,3 +46,15 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - run: pnpm build
+      - name: Build production container
+        run: docker build --target runner --tag canpark:ci .
+      - name: Export production container for scanning
+        run: docker image save --output /tmp/canpark-ci.tar canpark:ci
+      - name: Scan production container
+        run: >-
+          docker run --rm
+          --volume "/tmp/canpark-ci.tar:/scan/image.tar:ro"
+          --volume "trivy-cache:/root/.cache/trivy"
+          aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+          image --input /scan/image.tar --scanners vuln,secret
+          --severity HIGH,CRITICAL --exit-code 1 --quiet
