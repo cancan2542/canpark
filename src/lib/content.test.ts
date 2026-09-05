@@ -3,12 +3,21 @@ import {
   getMunicipalities,
   getSpotsByMunicipality,
   getSpotsByPrefecture,
+  microCMSApiUrl,
   normalizeMicroCMSSpot,
   toMapSpots,
 } from "@/lib/content";
 import { spots } from "@/lib/sample-data";
 
 describe("content helpers", () => {
+  it("only builds API URLs for valid microCMS service IDs and endpoints", () => {
+    expect(microCMSApiUrl("canpark", "spots")?.toString()).toBe(
+      "https://canpark.microcms.io/api/v1/spots",
+    );
+    expect(microCMSApiUrl("example.com/path?", "spots")).toBeNull();
+    expect(microCMSApiUrl("canpark", "../users")).toBeNull();
+  });
+
   it("groups spots by prefecture", async () => {
     await expect(getSpotsByPrefecture("yamanashi")).resolves.toHaveLength(1);
   });
@@ -65,5 +74,38 @@ describe("content helpers", () => {
       tsunami: "not_applicable",
       stormSurge: 1,
     });
+  });
+
+  it("fails closed for unsafe URLs, invalid coordinates, and unknown visibility", () => {
+    const spot = normalizeMicroCMSSpot({
+      id: "unsafe-cms-test",
+      title: "unsafe CMS test",
+      latitude: 91,
+      longitude: 138.7,
+      locationVisibility: "exact",
+      officialUrl: "javascript:alert(1)",
+      hazardSourceUrl: "data:text/html,<script>alert(2)</script>",
+      municipalityHazardUrl: "ftp://example.com/map",
+      photos: ["javascript:alert(3)", { url: "https://example.com/safe.jpg" }],
+    });
+
+    expect(spot.coordinates).toEqual({ latitude: 0, longitude: 0 });
+    expect(spot.locationVisibility).toBe("municipality");
+    expect(toMapSpots([spot])[0].coordinates).toBeNull();
+    expect(spot.officialUrl).toBeUndefined();
+    expect(spot.hazardSourceUrl).toBeUndefined();
+    expect(spot.municipalityHazardUrl).toBeUndefined();
+    expect(spot.photos).toEqual(["https://example.com/safe.jpg"]);
+  });
+
+  it("defaults a missing visibility setting to municipality-level privacy", () => {
+    const spot = normalizeMicroCMSSpot({
+      id: "missing-visibility-test",
+      latitude: 35.5,
+      longitude: 138.7,
+    });
+
+    expect(spot.locationVisibility).toBe("municipality");
+    expect(toMapSpots([spot])[0].coordinates).toBeNull();
   });
 });
