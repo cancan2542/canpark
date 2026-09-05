@@ -1,6 +1,13 @@
 import { regions, spots } from "@/lib/sample-data";
 import { toMapSpot } from "@/lib/location";
-import type { HazardRating, MapSpot, Region, Spot } from "@/types/content";
+import type {
+  Coordinates,
+  HazardRating,
+  LocationVisibility,
+  MapSpot,
+  Region,
+  Spot,
+} from "@/types/content";
 
 const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
 const apiKey = process.env.MICROCMS_API_KEY;
@@ -27,10 +34,20 @@ type MicroCMSFlatSpot = Omit<Partial<Spot>, "hazards" | "locationVisibility" | "
   locationVisibility?: MicroCMSSelectValue;
 };
 
+export function microCMSApiUrl(domain: string, endpoint: string): URL | null {
+  const validDomain = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain);
+  const validEndpoint = /^[a-z0-9-]+$/.test(endpoint);
+  if (!validDomain || !validEndpoint) return null;
+
+  return new URL(`https://${domain}.microcms.io/api/v1/${endpoint}`);
+}
+
 async function fetchMicroCMSList<T>(endpoint: string, allowMissing = false): Promise<T[] | null> {
   if (!serviceDomain || !apiKey) return null;
+  const url = microCMSApiUrl(serviceDomain, endpoint);
+  if (!url) return null;
 
-  const response = await fetch(`https://${serviceDomain}.microcms.io/api/v1/${endpoint}`, {
+  const response = await fetch(url, {
     headers: {
       "X-MICROCMS-API-KEY": apiKey,
     },
@@ -63,13 +80,56 @@ function dateOnly(value: string | undefined): string {
   return value?.slice(0, 10) ?? "";
 }
 
+function httpUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function validCoordinates(source: MicroCMSFlatSpot): Coordinates | null {
+  const coordinates = source.coordinates ?? {
+    latitude: source.latitude,
+    longitude: source.longitude,
+  };
+
+  if (
+    typeof coordinates.latitude !== "number" ||
+    !Number.isFinite(coordinates.latitude) ||
+    coordinates.latitude < -90 ||
+    coordinates.latitude > 90 ||
+    typeof coordinates.longitude !== "number" ||
+    !Number.isFinite(coordinates.longitude) ||
+    coordinates.longitude < -180 ||
+    coordinates.longitude > 180
+  ) {
+    return null;
+  }
+
+  return coordinates as Coordinates;
+}
+
+function locationVisibility(
+  value: MicroCMSSelectValue,
+  hasValidCoordinates: boolean,
+): LocationVisibility {
+  const selected = selectValue(value);
+  if (selected === "exact" && hasValidCoordinates) return "exact";
+  if (selected === "approximate") return "approximate";
+  return "municipality";
+}
+
 export function normalizeMicroCMSSpot(source: MicroCMSFlatSpot): Spot {
   const genre = source.genre ?? {
     id: `genre-${source.genreSlug ?? "other"}`,
     name: source.genreName ?? "その他",
     slug: source.genreSlug ?? "other",
   };
-  const locationVisibility = selectValue(source.locationVisibility);
+  const coordinates = validCoordinates(source);
 
   return {
     id: source.id,
@@ -81,24 +141,19 @@ export function normalizeMicroCMSSpot(source: MicroCMSFlatSpot): Spot {
     municipalitySlug: source.municipalitySlug ?? "",
     genre,
     body: source.body ?? "",
-    photos: (source.photos ?? []).flatMap((photo) =>
-      typeof photo === "string" ? [photo] : photo.url ? [photo.url] : [],
-    ),
+    photos: (source.photos ?? []).flatMap((photo) => {
+      const normalized = httpUrl(typeof photo === "string" ? photo : photo.url);
+      return normalized ? [normalized] : [];
+    }),
     visitedAt: dateOnly(source.visitedAt),
     publishedAt: source.publishedAt ?? "",
     updatedAt: source.updatedAt ?? "",
-    coordinates: source.coordinates ?? {
-      latitude: source.latitude ?? 0,
-      longitude: source.longitude ?? 0,
-    },
-    locationVisibility:
-      locationVisibility === "approximate" || locationVisibility === "municipality"
-        ? locationVisibility
-        : "exact",
-    officialUrl: source.officialUrl,
+    coordinates: coordinates ?? { latitude: 0, longitude: 0 },
+    locationVisibility: locationVisibility(source.locationVisibility, coordinates !== null),
+    officialUrl: httpUrl(source.officialUrl),
     hazardCheckedAt: dateOnly(source.hazardCheckedAt),
-    hazardSourceUrl: source.hazardSourceUrl,
-    municipalityHazardUrl: source.municipalityHazardUrl ?? source.municipalHazardUrl,
+    hazardSourceUrl: httpUrl(source.hazardSourceUrl),
+    municipalityHazardUrl: httpUrl(source.municipalityHazardUrl ?? source.municipalHazardUrl),
     hazardMemo: source.hazardMemo ?? "",
     hazards:
       source.hazards ??
