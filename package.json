@@ -20,7 +20,7 @@
     "cms:create-test-article": "node scripts/create-microcms-test-spot.mjs"
   },
   "dependencies": {
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^6.6.0",
     "next": "^15.5.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
