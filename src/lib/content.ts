@@ -1,5 +1,10 @@
 import { regions, spots } from "@/lib/sample-data";
 import { toMapSpot } from "@/lib/location";
+import {
+  fetchMicroCMSList,
+  type FetchLike,
+  type MicroCMSConfig,
+} from "@/lib/microcms";
 import type {
   Coordinates,
   HazardRating,
@@ -11,10 +16,21 @@ import type {
 
 const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
 const apiKey = process.env.MICROCMS_API_KEY;
+const microCMSConfig: MicroCMSConfig = { serviceDomain, apiKey };
 
-type MicroCMSListResponse<T> = {
-  contents: T[];
+type NextRequestInit = RequestInit & {
+  next: { revalidate: number };
 };
+
+const fetchWithRevalidation: FetchLike = (input, init) => {
+  const requestInit: NextRequestInit = {
+    ...init,
+    next: { revalidate: 300 },
+  };
+  return fetch(input, requestInit);
+};
+
+export { microCMSApiUrl } from "@/lib/microcms";
 
 type MicroCMSSelectValue = string | string[] | undefined;
 
@@ -33,36 +49,6 @@ type MicroCMSFlatSpot = Omit<Partial<Spot>, "hazards" | "locationVisibility" | "
   photos?: Array<string | { url: string }>;
   locationVisibility?: MicroCMSSelectValue;
 };
-
-export function microCMSApiUrl(domain: string, endpoint: string): URL | null {
-  const validDomain = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain);
-  const validEndpoint = /^[a-z0-9-]+$/.test(endpoint);
-  if (!validDomain || !validEndpoint) return null;
-
-  return new URL(`https://${domain}.microcms.io/api/v1/${endpoint}`);
-}
-
-async function fetchMicroCMSList<T>(endpoint: string, allowMissing = false): Promise<T[] | null> {
-  if (!serviceDomain || !apiKey) return null;
-  const url = microCMSApiUrl(serviceDomain, endpoint);
-  if (!url) return null;
-
-  const response = await fetch(url, {
-    headers: {
-      "X-MICROCMS-API-KEY": apiKey,
-    },
-    next: { revalidate: 300 },
-  });
-
-  if (allowMissing && response.status === 404) return null;
-
-  if (!response.ok) {
-    throw new Error(`microCMS request failed: ${endpoint}`);
-  }
-
-  const data = (await response.json()) as MicroCMSListResponse<T>;
-  return data.contents;
-}
 
 function selectValue(value: MicroCMSSelectValue): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -168,12 +154,21 @@ export function normalizeMicroCMSSpot(source: MicroCMSFlatSpot): Spot {
 }
 
 export async function getSpots(): Promise<Spot[]> {
-  const microCMSSpots = await fetchMicroCMSList<MicroCMSFlatSpot>("spots");
+  const microCMSSpots = await fetchMicroCMSList<MicroCMSFlatSpot>("spots", {
+    config: microCMSConfig,
+    fetcher: fetchWithRevalidation,
+  });
   return microCMSSpots?.map(normalizeMicroCMSSpot) ?? spots;
 }
 
 export async function getRegions(): Promise<Region[]> {
-  return (await fetchMicroCMSList<Region>("regions", true)) ?? regions;
+  return (
+    (await fetchMicroCMSList<Region>("regions", {
+      config: microCMSConfig,
+      fetcher: fetchWithRevalidation,
+      allowMissing: true,
+    })) ?? regions
+  );
 }
 
 export async function getSpotBySlug(slug: string): Promise<Spot | undefined> {
