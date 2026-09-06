@@ -10,7 +10,12 @@ export type FetchLike = (
 
 type MicroCMSListResponse<T> = {
   contents: T[];
+  totalCount: number;
+  offset: number;
+  limit: number;
 };
+
+const MICROCMS_LIST_LIMIT = 100;
 
 type FetchMicroCMSListOptions = {
   config: MicroCMSConfig;
@@ -39,19 +44,53 @@ export async function fetchMicroCMSList<T>(
   const url = microCMSApiUrl(config.serviceDomain, endpoint);
   if (!url) return null;
 
-  const response = await fetcher(url, {
-    method: "GET",
-    headers: {
-      "X-MICROCMS-API-KEY": config.apiKey,
-    },
-  });
+  const contents: T[] = [];
+  let offset = 0;
 
-  if (allowMissing && response.status === 404) return null;
+  while (true) {
+    const pageUrl = new URL(url);
+    pageUrl.searchParams.set("limit", String(MICROCMS_LIST_LIMIT));
+    pageUrl.searchParams.set("offset", String(offset));
 
-  if (!response.ok) {
-    throw new Error(`microCMS request failed: ${endpoint}`);
+    const response = await fetcher(pageUrl, {
+      method: "GET",
+      headers: {
+        "X-MICROCMS-API-KEY": config.apiKey,
+      },
+    });
+
+    if (allowMissing && response.status === 404) return null;
+
+    if (!response.ok) {
+      throw new Error(`microCMS request failed: ${endpoint}`);
+    }
+
+    const data = (await response.json()) as MicroCMSListResponse<T>;
+    const hasValidPagination =
+      Array.isArray(data.contents) &&
+      Number.isSafeInteger(data.totalCount) &&
+      data.totalCount >= 0 &&
+      Number.isSafeInteger(data.offset) &&
+      data.offset === offset &&
+      Number.isSafeInteger(data.limit) &&
+      data.limit > 0 &&
+      data.limit <= MICROCMS_LIST_LIMIT &&
+      data.contents.length <= data.limit &&
+      data.offset + data.contents.length <= data.totalCount &&
+      (data.offset + data.contents.length >= data.totalCount ||
+        data.contents.length === data.limit);
+
+    if (!hasValidPagination) {
+      throw new Error(`microCMS pagination metadata invalid: ${endpoint}`);
+    }
+
+    contents.push(...data.contents);
+
+    if (contents.length >= data.totalCount) return contents;
+    if (data.contents.length === 0) {
+      throw new Error(`microCMS pagination metadata invalid: ${endpoint}`);
+    }
+
+    offset += data.limit;
   }
-
-  const data = (await response.json()) as MicroCMSListResponse<T>;
-  return data.contents;
 }
