@@ -23,7 +23,14 @@ describe("microCMS transport", () => {
   });
 
   it("requests the expected endpoint with GET and the API key header", async () => {
-    const fetcher = vi.fn(async () => jsonResponse({ contents: [{ id: "spot-1" }] }));
+    const fetcher = vi.fn(async () =>
+      jsonResponse({
+        contents: [{ id: "spot-1" }],
+        totalCount: 1,
+        offset: 0,
+        limit: 100,
+      }),
+    );
 
     await expect(
       fetchMicroCMSList<{ id: string }>("spots", { config, fetcher }),
@@ -31,7 +38,7 @@ describe("microCMS transport", () => {
 
     expect(fetcher).toHaveBeenCalledOnce();
     expect(fetcher).toHaveBeenCalledWith(
-      new URL("https://canpark.microcms.io/api/v1/spots"),
+      new URL("https://canpark.microcms.io/api/v1/spots?limit=100&offset=0"),
       expect.objectContaining({
         method: "GET",
         headers: {
@@ -77,8 +84,89 @@ describe("microCMS transport", () => {
   );
 
   it("preserves a successful empty contents response", async () => {
-    const fetcher = vi.fn(async () => jsonResponse({ contents: [] }));
+    const fetcher = vi.fn(async () =>
+      jsonResponse({ contents: [], totalCount: 0, offset: 0, limit: 100 }),
+    );
 
     await expect(fetchMicroCMSList("spots", { config, fetcher })).resolves.toEqual([]);
+  });
+
+  it("retrieves all contents across multiple pages", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      id: `spot-${index + 1}`,
+    }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ contents: firstPage, totalCount: 101, offset: 0, limit: 100 }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          contents: [{ id: "spot-101" }],
+          totalCount: 101,
+          offset: 100,
+          limit: 100,
+        }),
+      );
+
+    const result = await fetchMicroCMSList<{ id: string }>("spots", { config, fetcher });
+
+    expect(result).toHaveLength(101);
+    expect(result?.at(-1)).toEqual({ id: "spot-101" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.map(([requestedUrl]) => requestedUrl.toString())).toEqual([
+      "https://canpark.microcms.io/api/v1/spots?limit=100&offset=0",
+      "https://canpark.microcms.io/api/v1/spots?limit=100&offset=100",
+    ]);
+  });
+
+  it.each([
+    {
+      name: "a non-positive limit",
+      body: { contents: [{ id: "spot-1" }], totalCount: 2, offset: 0, limit: 0 },
+    },
+    {
+      name: "an offset that does not match the requested page",
+      body: { contents: [{ id: "spot-1" }], totalCount: 2, offset: 1, limit: 100 },
+    },
+    {
+      name: "an empty page before totalCount is reached",
+      body: { contents: [], totalCount: 1, offset: 0, limit: 100 },
+    },
+    {
+      name: "a partial page before totalCount is reached",
+      body: { contents: [{ id: "spot-1" }], totalCount: 101, offset: 0, limit: 100 },
+    },
+  ])("rejects $name without retrying indefinitely", async ({ body }) => {
+    const fetcher = vi.fn(async () => jsonResponse(body));
+
+    await expect(fetchMicroCMSList("spots", { config, fetcher })).rejects.toThrow(
+      "microCMS pagination metadata invalid: spots",
+    );
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a repeated offset on a later page without looping", async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      id: `spot-${index + 1}`,
+    }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ contents: firstPage, totalCount: 101, offset: 0, limit: 100 }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          contents: [{ id: "spot-101" }],
+          totalCount: 101,
+          offset: 0,
+          limit: 100,
+        }),
+      );
+
+    await expect(fetchMicroCMSList("spots", { config, fetcher })).rejects.toThrow(
+      "microCMS pagination metadata invalid: spots",
+    );
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });
