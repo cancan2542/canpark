@@ -46,6 +46,7 @@ export async function fetchMicroCMSList<T>(
 
   const contents: T[] = [];
   let offset = 0;
+  let expectedTotalCount: number | null = null;
 
   while (true) {
     const pageUrl = new URL(url);
@@ -65,11 +66,18 @@ export async function fetchMicroCMSList<T>(
       throw new Error(`microCMS request failed: ${endpoint}`);
     }
 
-    const data = (await response.json()) as MicroCMSListResponse<T>;
+    const responseBody = (await response.json()) as unknown;
+    const isResponseObject =
+      typeof responseBody === "object" &&
+      responseBody !== null &&
+      !Array.isArray(responseBody);
+    const data = responseBody as MicroCMSListResponse<T>;
     const hasValidPagination =
+      isResponseObject &&
       Array.isArray(data.contents) &&
       Number.isSafeInteger(data.totalCount) &&
       data.totalCount >= 0 &&
+      (expectedTotalCount === null || data.totalCount === expectedTotalCount) &&
       Number.isSafeInteger(data.offset) &&
       data.offset === offset &&
       Number.isSafeInteger(data.limit) &&
@@ -83,6 +91,8 @@ export async function fetchMicroCMSList<T>(
     if (!hasValidPagination) {
       throw new Error(`microCMS pagination metadata invalid: ${endpoint}`);
     }
+
+    expectedTotalCount ??= data.totalCount;
 
     contents.push(...data.contents);
 

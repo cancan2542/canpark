@@ -169,4 +169,35 @@ describe("microCMS transport", () => {
     );
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+
+  it("rejects a changed totalCount on a later page without looping", async () => {
+    const page = Array.from({ length: 100 }, (_, index) => ({
+      id: `spot-${index + 1}`,
+    }));
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ contents: page, totalCount: 201, offset: 0, limit: 100 }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ contents: page, totalCount: 301, offset: 100, limit: 100 }),
+      );
+
+    await expect(fetchMicroCMSList("spots", { config, fetcher })).rejects.toThrow(
+      "microCMS pagination metadata invalid: spots",
+    );
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([null, 42, "unexpected", []])(
+    "rejects a non-object response body as invalid pagination metadata: %j",
+    async (body) => {
+      const fetcher = vi.fn(async () => jsonResponse(body));
+
+      await expect(fetchMicroCMSList("spots", { config, fetcher })).rejects.toThrow(
+        "microCMS pagination metadata invalid: spots",
+      );
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
 });
