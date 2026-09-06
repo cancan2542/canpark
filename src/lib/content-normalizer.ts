@@ -1,18 +1,22 @@
 import type {
   Coordinates,
+  HazardKey,
   HazardRating,
   LocationVisibility,
   Spot,
 } from "@/types/content";
 
 type MicroCMSSelectValue = string | string[] | undefined;
+type MicroCMSHazards = Partial<
+  Record<HazardKey, MicroCMSSelectValue | number>
+>;
 
 export type MicroCMSFlatSpot = Omit<
   Partial<Spot>,
   "hazards" | "locationVisibility" | "photos"
 > & {
   id: string;
-  hazards?: Spot["hazards"];
+  hazards?: MicroCMSHazards;
   genreName?: string;
   genreSlug?: string;
   latitude?: number;
@@ -30,12 +34,28 @@ function selectValue(value: MicroCMSSelectValue): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function hazardRating(value: MicroCMSSelectValue | number): HazardRating {
+function parseHazardRating(
+  value: MicroCMSSelectValue | number,
+): HazardRating | undefined {
   const selected = typeof value === "number" ? value : selectValue(value);
   if (selected === "unknown" || selected === "not_applicable") return selected;
 
-  const numeric = Number(selected);
-  return numeric >= 1 && numeric <= 5 ? (numeric as HazardRating) : "unknown";
+  if (typeof selected === "number") {
+    return Number.isInteger(selected) && selected >= 1 && selected <= 5
+      ? (selected as HazardRating)
+      : undefined;
+  }
+
+  return selected !== undefined && /^[1-5]$/.test(selected)
+    ? (Number(selected) as HazardRating)
+    : undefined;
+}
+
+function hazardRating(
+  nestedValue: MicroCMSSelectValue | number,
+  flatValue?: MicroCMSSelectValue | number,
+): HazardRating {
+  return parseHazardRating(nestedValue) ?? parseHazardRating(flatValue) ?? "unknown";
 }
 
 function dateOnly(value: string | undefined): string {
@@ -117,14 +137,12 @@ export function normalizeMicroCMSSpot(source: MicroCMSFlatSpot): Spot {
     hazardSourceUrl: httpUrl(source.hazardSourceUrl),
     municipalityHazardUrl: httpUrl(source.municipalityHazardUrl ?? source.municipalHazardUrl),
     hazardMemo: source.hazardMemo ?? "",
-    hazards:
-      source.hazards ??
-      ({
-        flood: hazardRating(source.flood),
-        landslide: hazardRating(source.landslide),
-        tsunami: hazardRating(source.tsunami),
-        stormSurge: hazardRating(source.stormSurge),
-      } as Spot["hazards"]),
+    hazards: {
+      flood: hazardRating(source.hazards?.flood, source.flood),
+      landslide: hazardRating(source.hazards?.landslide, source.landslide),
+      tsunami: hazardRating(source.hazards?.tsunami, source.tsunami),
+      stormSurge: hazardRating(source.hazards?.stormSurge, source.stormSurge),
+    },
     fieldTips: source.fieldTips ?? "",
   };
 }
