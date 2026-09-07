@@ -4,14 +4,12 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self'",
   "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://cyberjapandata.gsi.go.jp",
+  "img-src 'self' data: https://images.microcms-assets.io",
   "font-src 'self' data:",
-  "connect-src 'self' https://cyberjapandata.gsi.go.jp",
-  "worker-src 'self' blob:",
-  "child-src 'self' blob:",
+  "connect-src 'self'",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
 ].join("; ");
@@ -25,6 +23,6 @@ export const securityHeaders = [
   { key: "X-XSS-Protection", value: "0" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), geolocation=(), microphone=()",
+    value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
   },
 ];
