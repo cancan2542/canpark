@@ -7,17 +7,7 @@ const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
 const apiKey = process.env.MICROCMS_API_KEY;
 const microCMSConfig: MicroCMSConfig = { serviceDomain, apiKey };
 
-type NextRequestInit = RequestInit & {
-  next: { revalidate: number };
-};
-
-const fetchWithRevalidation: FetchLike = (input, init) => {
-  const requestInit: NextRequestInit = {
-    ...init,
-    next: { revalidate: 300 },
-  };
-  return fetch(input, requestInit);
-};
+const fetchAtBuildTime: FetchLike = (input, init) => fetch(input, init);
 
 export { microCMSApiUrl } from "@/lib/microcms";
 export {
@@ -29,7 +19,7 @@ export { toMapSpots } from "@/lib/content-repository";
 const repository = createContentRepository({
   source: createMicroCMSContentSource({
     config: microCMSConfig,
-    fetcher: fetchWithRevalidation,
+    fetcher: fetchAtBuildTime,
   }),
   fallbackSpots: spots,
   fallbackRegions: regions,

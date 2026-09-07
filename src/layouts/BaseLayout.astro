@@ -1,0 +1,82 @@
+---
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
+import "@/styles/globals.css";
+
+type Props = {
+  title?: string;
+  description?: string;
+  canonicalPath?: string;
+  noindex?: boolean;
+};
+
+const {
+  title,
+  description = "車中泊旅行スポットとハザードマップ確認メモを紹介するブログ。",
+  canonicalPath,
+  noindex = false,
+} = Astro.props;
+const pageTitle = title ? `${title} | canpark` : "canpark";
+const canonicalUrl = canonicalPath
+  ? new URL(canonicalPath, Astro.site ?? PRODUCTION_SITE_ORIGIN)
+  : undefined;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="generator" content={Astro.generator} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    <title>{pageTitle}</title>
+  </head>
+  <body class="font-sans antialiased">
+    <header class="border-b border-zinc-200 bg-white/90 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <a href="/" class="text-xl font-bold text-pine">canpark</a>
+        <nav aria-label="メインナビゲーション" class="flex items-center gap-4 text-sm text-zinc-700">
+          <a href="/disclaimer" class="hover:text-pine">免責事項</a>
+          <a
+            href="https://disaportal.gsi.go.jp/"
+            class="hover:text-pine"
+            rel="noreferrer"
+            target="_blank"
+          >
+            ハザードマップ
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="mt-12 border-t border-zinc-200 bg-white">
+      <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs leading-5 text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
+        <p>&copy; canpark</p>
+        <p>
+          地図境界データ: <a
+            class="underline hover:text-pine"
+            href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v3_1.html"
+            rel="noreferrer"
+            target="_blank"
+          >国土数値情報（行政区域データ）</a>
+          （国土交通省、CC BY 4.0）
+        </p>
+      </div>
+    </footer>
+    <script>
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        const activeElement = document.activeElement;
+        if (
+          activeElement instanceof HTMLElement &&
+          activeElement.matches(".japan-map a, .prefecture-map a")
+        ) {
+          activeElement.blur();
+        }
+      });
+    </script>
+  </body>
+</html>

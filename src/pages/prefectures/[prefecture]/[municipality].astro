@@ -1,0 +1,65 @@
+---
+import PrefectureMap from "@/components/PrefectureMap.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import SpotCard from "@/components/SpotCard.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  getMunicipalities,
+  getPrefectures,
+  getSpotsByMunicipality,
+  toMapSpots,
+} from "@/lib/content";
+import type { Region, Spot } from "@/types/content";
+
+type Props = {
+  prefectureRegion: Region;
+  municipalityRegion: Region;
+  spots: Spot[];
+};
+
+export async function getStaticPaths() {
+  const prefectures = await getPrefectures();
+  const groups = await Promise.all(prefectures.map(async (prefectureRegion) => {
+    const municipalities = await getMunicipalities(prefectureRegion.slug);
+    return Promise.all(municipalities.map(async (municipalityRegion) => ({
+      params: {
+        prefecture: prefectureRegion.slug,
+        municipality: municipalityRegion.slug,
+      },
+      props: {
+        prefectureRegion,
+        municipalityRegion,
+        spots: await getSpotsByMunicipality(municipalityRegion.slug),
+      },
+    })));
+  }));
+
+  return groups.flat();
+}
+
+const { prefectureRegion, municipalityRegion, spots } = Astro.props;
+const checkedCount = spots.filter((spot) => Boolean(spot.hazardCheckedAt)).length;
+---
+
+<BaseLayout
+  title={`${municipalityRegion.name}の車中泊スポット`}
+  canonicalPath={`/prefectures/${prefectureRegion.slug}/${municipalityRegion.slug}`}
+>
+  <div class="mx-auto max-w-6xl px-4 py-8">
+    <p class="text-sm text-zinc-500">{prefectureRegion.name}</p>
+    <h1 class="mt-2 text-4xl font-bold text-ink">{municipalityRegion.name}</h1>
+    <p class="mt-3 max-w-3xl leading-7 text-zinc-700">{municipalityRegion.description}</p>
+    <p class="mt-3 text-sm text-pine">ハザード確認済みスポット: {checkedCount}件</p>
+
+    <section class="mt-8" aria-label={`${municipalityRegion.name}のスポット地図`}>
+      <PrefectureMap prefectureSlug={prefectureRegion.slug} spots={toMapSpots(spots)} />
+    </section>
+
+    <section class="mt-10">
+      <SectionHeader title="スポット" />
+      <div class="grid gap-4 md:grid-cols-2">
+        {spots.map((spot) => <SpotCard spot={spot} />)}
+      </div>
+    </section>
+  </div>
+</BaseLayout>

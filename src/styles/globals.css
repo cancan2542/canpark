@@ -23,3 +23,8 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+:focus-visible {
+  outline: 3px solid #327aa1;
+  outline-offset: 3px;
+}
