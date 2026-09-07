@@ -2,27 +2,21 @@
 
 ## Architecture Summary
 
-Next.js App Router + TypeScript + microCMS + Vercel で構築する。
+Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信する。UIは必要な箇所だけクライアント側JavaScriptを読み込む。
 
-開発はローカル環境を汚さないためDockerコンテナ内で行う。
-
-環境は `dev` と `prod` の2つにする。stagingは作らない。
-
-地図UIはGoogle Mapsに近い操作感を優先し、MapLibre GL JSを採用する。背景地図は地理院タイルのラスタータイルを使う。
+開発・検証・依存更新はDockerコンテナ内で行い、ホストへNode.js依存をインストールしない。環境は `dev` と `prod` の2つとし、stagingは設けない。
 
 ## Stack
 
-- Framework: Next.js App Router
+- Framework: Astro（static output）
 - Language: TypeScript
 - Package Manager: pnpm
-- Runtime: Node.js LTS
-- Production Container Runtime: Distroless Node.js 22 (Debian 13, nonroot, digest pinned)
+- Build Runtime: Node.js 22
+- Production Container: nginx-unprivileged（nonroot、digest固定）
 - CMS: microCMS
 - Hosting: Vercel
-- Map: MapLibre GL JS
-- Base Map: 地理院タイル
-- Styling: Tailwind CSS
-- Unit/Integration Test: Vitest + React Testing Library
+- Map: 国土数値情報由来のリポジトリ内SVG（外部タイル・WebGL・地図ライブラリ不使用）
+- Unit/Integration Test: Vitest
 - E2E Test: Playwright
 - Formatter/Linter: ESLint + Prettier
 
@@ -30,186 +24,109 @@ Next.js App Router + TypeScript + microCMS + Vercel で構築する。
 
 ### dev
 
-- Docker ComposeでNext.js開発サーバーを起動する。
-- `.env.local` はコンテナ内から読み込む。
-- microCMSは本番と同じサービスを使い、下書き/非公開記事で開発確認する。
-- ローカルに直接Node.js依存を入れない。
-- `pnpm install`、Playwrightブラウザ取得、その他インストール系コマンドはすべてDockerコンテナ内で実行する。
+- `docker compose up --build app` でAstro開発サーバーを起動する。
+- ブラウザから `http://127.0.0.1:4321` を開く。ポートはlocalhostだけへ公開する。
+- `.env.local` をコンテナから読み込み、値がない場合はサンプルデータへフォールバックする。
+- `pnpm install`、Playwrightブラウザ取得、依存更新を含むNode.jsコマンドはすべてコンテナ内で実行する。
 
 ### prod
 
-- Vercelにデプロイする。
-- microCMSの公開済み記事のみ表示する。
-- microCMS更新時にVercelの再検証Webhookを叩く。
+- Astroの `dist/` をVercelから静的配信する。
+- productionへ反映するCMSコンテンツは公開済みの記事だけとする。
+- microCMS更新時はVercel Deploy Hookを呼び、静的ページを再ビルドする。
+- 本番相当の配信確認には `docker compose --profile production up --build prod` を使い、`http://127.0.0.1:8080` を開く。
+- productionコンテナはread-only、nonroot、`no-new-privileges` で実行する。
 
 ### Environment Variables
 
-必要な環境変数。
-
 - `MICROCMS_SERVICE_DOMAIN`
 - `MICROCMS_API_KEY`
-- `MICROCMS_PREVIEW_API_KEY`
-- `REVALIDATE_SECRET`
 
-秘密情報はGit管理しない。
+秘密情報とVercel Deploy Hook URLはGit管理しない。Vercel CLIが生成する `.vercel/` もGit管理しない。旧Next.jsの `MICROCMS_PREVIEW_API_KEY` と `REVALIDATE_SECRET` はAstro SSGでは使用しない。
 
-Vercel CLIでローカルリンクした場合に生成される `.vercel/` はGit管理しない。
+## Data and Rendering Flow
 
-## Docker Development Flow
+1. Astroのビルド時にmicroCMSから全公開記事をページング取得する。
+2. CMSレスポンスを表示用モデルへ正規化する。
+3. トップ、都道府県、市区町村、スポット記事を静的HTMLとして生成する。
+4. Vercelまたはproductionコンテナが生成物を配信する。
 
-リポジトリに以下を用意する。
-
-- `Dockerfile`
-- `docker-compose.yml`
-- `.dockerignore`
-
-基本コマンド。
-
-- `docker compose up app`: 開発サーバー起動
-- `docker compose run --rm app pnpm test`: 単体/統合テスト
-- `docker compose run --rm app pnpm test:e2e`: E2Eテスト
-- `docker compose run --rm app pnpm lint`: lint
-- `docker compose run --rm app pnpm typecheck`: TypeScript型チェック
-- `docker compose run --rm app pnpm build`: production build
-- `docker compose run --rm app pnpm install`: lockfile生成/依存更新
-
-開発サーバーの公開先は `127.0.0.1:3000` に限定する。production runnerはビルド環境と分離し、シェルやパッケージマネージャーを含まないDistrolessイメージを非rootユーザーで実行する。ベースイメージはdigestで固定し、Dependabotで更新する。
-
-Mac/WindowsのDocker開発ではファイル監視が不安定な場合があるため、必要に応じてpolling設定を使う。
-
-## microCMS APIs
-
-以下のAPIを作る。
-
-- `spots`
-- `regions`
-- `genres`
-
-Next.js側ではCMSレスポンスをそのまま画面に渡さず、表示用の型へ正規化する。
-
-## Data Flow
-
-正規化時に以下を処理する。
-
-- `locationVisibility` に応じて地図表示座標を制御する
-- ハザード未入力項目を `未確認` として扱う
-- 外部URLがない場合はリンクを表示しない
-- 写真がない場合は写真領域自体を省略する
-
-## Rendering Strategy
-
-トップ、都道府県、市区町村、スポット記事はSEO重視で静的生成またはISRにする。
-
-地図コンポーネントはブラウザAPI/WebGL依存のためClient Componentに分離する。
-
-React Server Componentsの細かい単体テストは避け、ロジックを純粋関数に切り出してVitestでテストする。
+`locationVisibility` が `exact` の記事だけ地図にピンを表示する。`approximate` と `municipality` は一覧には表示するが正確な座標を地図やHTMLへ出力しない。
 
 ## Map Architecture
 
-MapLibre GL JSをClient Component内で初期化する。
+全国地図と都道府県地図は、国土交通省「国土数値情報（行政区域データ）」を加工したSVGを使用する。MapLibre、外部地図タイル、WebGLは使用しない。
 
-背景地図は地理院タイルのラスタータイルを使う。
+- 全国地図は都道府県を選択でき、hover/focus時に都道府県名を表示する。
+- 都道府県地図は公開可能な記事スポットをピンで示す。
+- ピンは上から落下する演出を行い、`prefers-reduced-motion: reduce` では演出を止める。
+- ピンのhover/focus時にスポット名と記事リンクを表示し、キーボード・タッチ操作でも利用できるようにする。
+- 地図自体には出典文字を重ねず、共通フッターまたは一般的な出典表示箇所にデータ名、提供者、加工した旨を記載する。
 
-地図には以下を表示する。
+## Security Controls
 
-- 公開可能なスポットピン
-- 都道府県/市区町村ページの表示範囲
-- 地理院タイルの出典表記
+Vercelとproductionコンテナの両方で次のレスポンスヘッダーを付与する。
 
-非公式スポットで `locationVisibility` が `approximate` または `municipality` の場合、正確な座標ピンは表示しない。
+- `Content-Security-Policy`: 既定の取得元をsame-originへ制限し、object・frame埋め込みを禁止する。
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `X-Frame-Options: DENY` とCSP `frame-ancestors 'none'`
+- `Permissions-Policy`: camera、geolocation、microphone、payment、USBを無効化する。
+
+正規ホストは `canpark.blog` とし、`www.canpark.blog` はパスとクエリを保ってHTTPSの正規ホストへ308リダイレクトする。Vercel preview URLやlocalhostは確認できるよう強制転送しない。
 
 ## Development Workflow
 
-Issue駆動で進める。
+1. GitHub Issueへ目的、受け入れ条件、テスト観点を書く。
+2. `main` から `feature/#<issueNo>` または `fix/#<issueNo>` を作る。
+3. 先に失敗するテスト、または再現可能な検証観点を用意する。
+4. 小さい単位で実装・コミットする。
+5. Docker内で `typecheck`、`lint`、`test`、`test:e2e`、`build` を通す。
+6. Pull RequestのCIとレビューを通し、`main` へマージする。
+7. Vercel Git Integrationがproduction deploymentを作成する。
 
-基本フロー。
+## Quality Gates and Supply-chain Checks
 
-1. GitHub Issueを作る
-2. Issueに目的、受け入れ条件、テスト観点を書く
-3. `main` から `feature/#<issueNo>` ブランチを切る
-4. 先に失敗するテストまたは検証観点を書く
-5. 実装する
-6. `typecheck`、`lint`、`test`、`test:e2e`、`build` を通す
-7. `main` へマージする
-8. `main` をpushする
-9. Vercel Git Integrationが `main` pushを検知し、productionへdeployする
+GitHub Actionsはpush、Pull Request、手動実行、毎週月曜9:17（JST）に次を実行する。
 
-ブランチ命名。
+- TypeScript型チェック、lint、Vitest、Playwright、production build
+- Gitleaksによる全Git履歴の秘密情報スキャン
+- Trivyによる開発依存を含む依存関係とDocker設定のHigh/Critical検査
+- productionコンテナのビルド、起動スモークテスト、脆弱性・秘密情報検査
+- CodeQL `security-extended` によるJavaScript/TypeScript解析
 
-- `feature/#<issueNo>`
-- `fix/#<issueNo>`
-- `docs/#<issueNo>`
+ワークフロー権限は原則 `contents: read` とし、CodeQLだけ `security-events: write` を追加する。外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。npm、GitHub Actions、Dockerの更新はDependabotが週次確認する。
 
-コミットは小さく分ける。
+CodeQLはAstroコンポーネントのfrontmatterから生成されるJavaScript/TypeScriptを解析するが、`.astro`テンプレート全体の構文・表示挙動を単独では保証しない。その範囲は`astro check`、ESLintのAstro推奨ルール、desktop/mobileのPlaywright E2Eで補完する。
 
-- CMS型/データ取得
-- UI
-- 地図
-- テスト
-- ドキュメント
+## Deployment and CMS Refresh
 
-## TDD Policy
+Production deployはVercel Git Integrationへ一本化し、GitHub Actionsからデプロイしない。`main` pushまたはmicroCMSのDeploy Hookで新しいdeploymentを作る。
 
-優先してテストを書く対象。
+microCMS側のWebhookは次のイベントでproduction用Deploy HookへPOSTする。
 
-- CMSデータの正規化
-- ハザード評価の表示変換
-- 位置公開レベルによる座標制御
-- 地域slug生成
-- 記事一覧の絞り込み
-- 主要ページの表示
+- 記事の公開
+- 公開記事の更新
+- 公開記事の削除・非公開化
 
-React Server Componentsの画面全体保証はPlaywrightで行う。
+Deploy Hookは署名検証を行う自前APIではなく、URLを知る者が実行できるVercelの秘密URLである。CMS管理者だけが閲覧できる場所に保存し、漏えい時はVercelで削除・再発行する。反映されない場合は、VercelのdeploymentログでCMS取得・ビルド失敗を確認し、原因解消後にDeploy Hookを再送する。
 
-## Quality Gates
+## Rollback
 
-mainに入れる前に以下を必須にする。
+### アプリケーション変更を戻す
 
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm test:e2e`
-- `pnpm build`
-- GitleaksによるGit履歴の秘密情報スキャン
-- Trivyによる依存関係、Docker設定、productionイメージの脆弱性スキャン
+1. GitHubで原因コミットをrevertするPull Requestを作る（履歴のforce pushやresetはしない）。
+2. 品質ゲート通過後に `main` へマージする。
+3. Vercel Git Integrationによるproduction反映と主要ページを確認する。
 
-CIでも同じコマンドを実行する。
+緊急時はVercel Dashboardで直前の正常なdeploymentを選び、productionへPromoteして即時復旧する。その後、必ずGit側もrevertして次回deployで不具合が復活しないようにする。
 
-## CI and Deployment Flow
+### CMSコンテンツを戻す
 
-GitHub Actionsは品質ゲート専用にする。
-
-GitHub Actionsでは以下を実行する。
-
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm test:e2e`
-- `pnpm build`
-- Git全履歴の秘密情報スキャン
-- 本番・開発依存とDockerfile設定の脆弱性スキャン
-- productionコンテナのビルドとHigh/Critical脆弱性スキャン
-- CodeQL `security-extended` によるJavaScript/TypeScriptの静的セキュリティ解析
-
-GitHub Actionsは `contents: read` の最小権限で実行し、外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。CI一式はpush・Pull Requestに加えて毎週月曜9:17（JST）に実行し、依存・Action・DockerイメージはDependabotで週次確認する。定期実行はGitHub Actionsの混雑が集中しやすい毎時0分を避ける。
-
-Production deployはVercel Git Integrationに一本化する。
-
-`main` push時にVercelがGitHub連携経由でproduction deploymentを作成する。
-
-GitHub Actionsから `vercel deploy --prod` は実行しない。Vercel Git IntegrationとGitHub Actions deploy jobの二重デプロイを避けるため。
-
-Secrets更新後やVercel側の一時障害後に再実行できるよう、CI workflowは手動実行にも対応する。
-
-microCMS更新時は `REVALIDATE_SECRET` で保護したrevalidate endpointを呼ぶ。
+1. microCMSで対象記事を直前の正しい内容へ戻すか、一時的に非公開にする。
+2. production用Deploy Hookを実行する。
+3. Vercelのビルド成功後、対象ページと一覧から反映を確認する。
 
 ## External Data and Attribution
 
-ハザード確認元は以下を基準にする。
-
-- ハザードマップポータルサイト
-- 自治体ハザードマップ
-
-地理院タイルを表示する場合は、地図上または近接箇所に出典を表示する。
-
-ハザードマップ情報を引用・加工する場合は、出典と加工した旨を明記する。
+ハザード情報はハザードマップポータルサイトと自治体ハザードマップを基準にし、確認日、出典、加工の有無を記事へ記載する。地図境界は国土数値情報の利用条件に従い、共通フッター等へ出典と加工した旨を表示する。
