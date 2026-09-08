@@ -36,7 +36,6 @@ const { region, municipalities, spots } = Astro.props;
   <div class="mx-auto max-w-6xl px-4 py-8">
     <p class="text-sm text-zinc-500">都道府県</p>
     <h1 class="mt-2 text-4xl font-bold text-ink">{region.name}</h1>
-    <p class="mt-3 max-w-3xl leading-7 text-zinc-700">{region.description}</p>
 
     <section class="mt-8" aria-label={`${region.name}のスポット地図`}>
       <PrefectureMap prefectureSlug={region.slug} spots={toMapSpots(spots)} />
