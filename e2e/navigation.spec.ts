@@ -10,7 +10,7 @@ test("top page links through regional navigation", async ({ page }) => {
   await expect(japanMap).toBeVisible();
   const mapBox = await japanMap.boundingBox();
   const viewportWidth = page.viewportSize()?.width;
-  expect(mapBox?.width).toBe(viewportWidth && viewportWidth >= 1152 ? 1120 : (viewportWidth ?? 32) - 32);
+  expect(mapBox?.width).toBe(viewportWidth && viewportWidth >= 992 ? 960 : (viewportWidth ?? 32) - 32);
 
   const yamanashiMapLink = page.getByRole("link", { name: "山梨県の記事を見る" });
   await yamanashiMapLink.focus();
@@ -34,6 +34,7 @@ test("top page links through regional navigation", async ({ page }) => {
   if (!spotTitle) throw new Error("Spot link title was empty.");
   await spotLink.click();
   await expect(page.getByRole("heading", { name: spotTitle })).toBeVisible();
+  await expect(page.getByTestId("prefecture-map")).toHaveCount(0);
   await expect(page.getByText("ハザード確認", { exact: true })).toBeVisible();
   await expect(page.getByText("現地Tips")).toBeVisible();
   await expect(page.getByRole("link", { name: "免責事項を確認する" })).toBeVisible();

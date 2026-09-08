@@ -1,10 +1,9 @@
 ---
 import DisclaimerNotice from "@/components/DisclaimerNotice.astro";
 import HazardRatings from "@/components/HazardRatings.astro";
-import PrefectureMap from "@/components/PrefectureMap.astro";
 import SectionHeader from "@/components/SectionHeader.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { getSpots, toMapSpots } from "@/lib/content";
+import { getSpots } from "@/lib/content";
 import type { Spot } from "@/types/content";
 
 type Props = {
@@ -38,10 +37,6 @@ const { spot } = Astro.props;
     <p class="mt-3 text-sm text-zinc-500">
       訪問日: {spot.visitedAt} / ハザード確認日: {spot.hazardCheckedAt}
     </p>
-
-    <section class="mt-8" aria-label={`${spot.prefecture}のスポット地図`}>
-      <PrefectureMap prefectureSlug={spot.prefectureSlug} spots={toMapSpots([spot])} />
-    </section>
 
     <section class="mt-8">
       <SectionHeader title="旅行メモ" />
