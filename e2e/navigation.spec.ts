@@ -3,8 +3,14 @@ import { expect, test } from "@playwright/test";
 test("top page links through regional navigation", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /地図から/ })).toBeVisible();
-  await expect(page.getByTestId("japan-map")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "都道府県から探す", level: 1 })).toBeVisible();
+  await expect(page.getByText("車中泊スポットとハザード確認メモ")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "免責事項を確認する" })).toHaveCount(0);
+  const japanMap = page.getByTestId("japan-map");
+  await expect(japanMap).toBeVisible();
+  const mapBox = await japanMap.boundingBox();
+  const viewportWidth = page.viewportSize()?.width;
+  expect(mapBox?.width).toBe(viewportWidth && viewportWidth >= 1152 ? 1120 : (viewportWidth ?? 32) - 32);
 
   const yamanashiMapLink = page.getByRole("link", { name: "山梨県の記事を見る" });
   await yamanashiMapLink.focus();
