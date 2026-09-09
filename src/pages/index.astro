@@ -1,0 +1,31 @@
+---
+import JapanMap from "@/components/JapanMap.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import SpotCard from "@/components/SpotCard.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getPrefectures, getSpots } from "@/lib/content";
+
+const [prefectures, spots] = await Promise.all([getPrefectures(), getSpots()]);
+const prefectureSlugsWithSpots = new Set(spots.map((spot) => spot.prefectureSlug));
+const selectablePrefectures = prefectures
+  .filter((prefecture) => prefectureSlugsWithSpots.has(prefecture.slug))
+  .map(({ name, slug }) => ({ name, slug }));
+---
+
+<BaseLayout canonicalPath="/">
+  <div class="mx-auto max-w-6xl px-4 py-8">
+    <section aria-labelledby="prefecture-map-heading">
+      <h1 id="prefecture-map-heading" class="mb-5 text-2xl font-bold text-ink">
+        都道府県から探す
+      </h1>
+      <JapanMap prefectures={selectablePrefectures} />
+    </section>
+
+    <section class="mt-10">
+      <SectionHeader title="最新スポット" />
+      <div class="grid gap-4 md:grid-cols-2">
+        {spots.map((spot) => <SpotCard spot={spot} />)}
+      </div>
+    </section>
+  </div>
+</BaseLayout>

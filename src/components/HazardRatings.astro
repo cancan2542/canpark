@@ -1,0 +1,22 @@
+---
+import { formatHazardRating, hazardLabels, hazardTone } from "@/lib/hazards";
+import type { HazardKey, HazardRating } from "@/types/content";
+
+type Props = {
+  hazards: Record<HazardKey, HazardRating>;
+};
+
+const hazardOrder: HazardKey[] = ["flood", "landslide", "tsunami", "stormSurge"];
+const { hazards } = Astro.props;
+---
+
+<div class="grid gap-3 sm:grid-cols-2">
+  {hazardOrder.map((key) => (
+    <div class="rounded border border-zinc-200 bg-white p-4">
+      <p class="text-sm text-zinc-500">{hazardLabels[key]}</p>
+      <p class:list={["mt-2 inline-flex rounded px-2.5 py-1 text-sm font-semibold", hazardTone(hazards[key])] }>
+        {formatHazardRating(hazards[key])}
+      </p>
+    </div>
+  ))}
+</div>

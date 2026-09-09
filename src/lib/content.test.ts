@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   getMunicipalities,
+  getPrefectures,
+  getRegionBySlug,
+  getRegions,
+  getSpotBySlug,
+  getSpots,
   getSpotsByMunicipality,
   getSpotsByPrefecture,
   microCMSApiUrl,
@@ -31,8 +36,28 @@ describe("content helpers", () => {
     expect(municipalities.map((municipality) => municipality.slug)).toEqual(["hakuba"]);
   });
 
+  it("keeps the existing content facade available with sample-data fallback", async () => {
+    const [allSpots, allRegions, prefectures, spot, region] = await Promise.all([
+      getSpots(),
+      getRegions(),
+      getPrefectures(),
+      getSpotBySlug("michi-no-eki-katsuyama"),
+      getRegionBySlug("yamanashi"),
+    ]);
+
+    expect(allSpots).toEqual(spots);
+    expect(allRegions).toHaveLength(4);
+    expect(prefectures.map((prefecture) => prefecture.slug)).toEqual(["yamanashi", "nagano"]);
+    expect(spot?.id).toBe("spot-katsuyama");
+    expect(region?.id).toBe("region-yamanashi");
+  });
+
   it("creates map spots without leaking approximate coordinates", () => {
     const mapSpots = toMapSpots(spots);
+    expect(mapSpots.find((spot) => spot.slug === "michi-no-eki-katsuyama")?.coordinates).toEqual({
+      latitude: 35.5082,
+      longitude: 138.7246,
+    });
     expect(mapSpots.find((spot) => spot.slug === "hakuba-mountain-base")?.coordinates).toBeNull();
   });
 

@@ -12,9 +12,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,6 +53,18 @@ jobs:
       - run: pnpm build
       - name: Build production container
         run: docker build --target runner --tag canpark:ci .
+      - name: Smoke test production container
+        run: |
+          docker run --detach --name canpark-ci --publish 127.0.0.1:8080:8080 canpark:ci
+          trap 'docker rm --force canpark-ci' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs canpark-ci
+          exit 1
       - name: Export production container for scanning
         run: docker image save --output /tmp/canpark-ci.tar canpark:ci
       - name: Scan production container
@@ -62,6 +79,7 @@ jobs:
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: read

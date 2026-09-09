@@ -1,0 +1,78 @@
+---
+import DisclaimerNotice from "@/components/DisclaimerNotice.astro";
+import HazardRatings from "@/components/HazardRatings.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getSpots } from "@/lib/content";
+import type { Spot } from "@/types/content";
+
+type Props = {
+  spot: Spot;
+};
+
+export async function getStaticPaths() {
+  const spots = await getSpots();
+  return spots.map((spot) => ({
+    params: { slug: spot.slug },
+    props: { spot },
+  }));
+}
+
+const { spot } = Astro.props;
+---
+
+<BaseLayout
+  title={`${spot.title}の車中泊メモ`}
+  description={spot.body}
+  canonicalPath={`/spots/${spot.slug}`}
+>
+  <article class="mx-auto max-w-4xl px-4 py-8">
+    <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+      <span>{spot.prefecture}</span>
+      <span>/</span>
+      <span>{spot.municipality}</span>
+      <span class="rounded bg-mist px-2 py-0.5 text-ink">{spot.genre.name}</span>
+    </div>
+    <h1 class="mt-3 text-4xl font-bold text-ink">{spot.title}</h1>
+    <p class="mt-3 text-sm text-zinc-500">
+      訪問日: {spot.visitedAt} / ハザード確認日: {spot.hazardCheckedAt}
+    </p>
+
+    <section class="mt-8">
+      <SectionHeader title="旅行メモ" />
+      <p class="whitespace-pre-line text-base leading-8 text-zinc-700">{spot.body}</p>
+    </section>
+
+    <section class="mt-8">
+      <SectionHeader
+        title="ハザード確認"
+        description="危険度は確認時点の公式ハザード情報をもとにした個人の整理です。"
+      />
+      <HazardRatings hazards={spot.hazards} />
+      <p class="mt-4 text-sm leading-6 text-zinc-700">{spot.hazardMemo}</p>
+      <div class="mt-4 flex flex-wrap gap-3 text-sm">
+        {spot.hazardSourceUrl && (
+          <a class="font-semibold text-pine underline" href={spot.hazardSourceUrl} target="_blank" rel="noreferrer">
+            ハザードマップポータルサイト
+          </a>
+        )}
+        {spot.municipalityHazardUrl && (
+          <a class="font-semibold text-pine underline" href={spot.municipalityHazardUrl} target="_blank" rel="noreferrer">
+            自治体情報
+          </a>
+        )}
+      </div>
+    </section>
+
+    <section class="mt-8">
+      <SectionHeader title="現地Tips" />
+      <p class="whitespace-pre-line rounded border border-zinc-200 bg-white p-4 leading-7 text-zinc-700">
+        {spot.fieldTips}
+      </p>
+    </section>
+
+    <section class="mt-8">
+      <DisclaimerNotice />
+    </section>
+  </article>
+</BaseLayout>
