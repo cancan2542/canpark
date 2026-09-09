@@ -5,12 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:4321",
     trace: "on-first-retry",
   },
   webServer: {
-    command: "corepack pnpm dev",
-    url: "http://127.0.0.1:3000",
+    command: "corepack pnpm dev --host 127.0.0.1 --port 4321",
+    url: "http://127.0.0.1:4321",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
