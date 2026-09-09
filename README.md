@@ -12,7 +12,7 @@ Node.js依存はホストへインストールせず、Dockerコンテナ内で�
 docker compose up --build app
 ```
 
-起動後は <http://127.0.0.1:4321> を開きます。`.env.local` がない、またはmicroCMSの値が空の場合はサンプルデータを使用します。
+起動後は <http://127.0.0.1:4321> を開きます。`.env.local` がない、またはmicroCMSの値が空の場合、記事は0件で表示されます（地域情報のみローカルデータを使用します）。
 
 主な検証コマンドもDocker経由で実行します。
 
@@ -33,6 +33,8 @@ docker compose --profile production up --build prod
 ## microCMSとデプロイ
 
 Vercelの環境変数へ `MICROCMS_SERVICE_DOMAIN` と `MICROCMS_API_KEY` を設定します。公開データはAstroのビルド時に取得されるため、microCMSで記事を公開・更新・削除しただけでは公開サイトは変わりません。
+
+`genreSlug` が `connection-test` の記事は開発時の接続・描画確認専用です。productionビルドでは一覧と記事ページの生成対象から除外されます。
 
 Vercel Project SettingsでDeploy Hook（例: `microcms-production`、対象ブランチ: `main`）を作成し、そのURLをmicroCMSのWebhookへ登録してください。microCMSからDeploy HookへPOSTされるとVercelが再ビルドし、更新後の静的ページを公開します。Deploy Hook URLは秘密情報として扱い、リポジトリやCMS本文へ記載しません。
 

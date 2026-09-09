@@ -3,8 +3,9 @@ import {
   createContentRepository,
   toMapSpots,
 } from "@/lib/content-repository";
-import { regions, spots } from "@/lib/sample-data";
+import { fallbackRegions as regions } from "@/lib/fallback-regions";
 import type { Region, Spot } from "@/types/content";
+import { fixtureSpots as spots } from "../../test/fixtures/content";
 
 describe("content repository", () => {
   it("loads content through an injected source", async () => {

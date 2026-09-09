@@ -26,7 +26,7 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 
 - `docker compose up --build app` でAstro開発サーバーを起動する。
 - ブラウザから `http://127.0.0.1:4321` を開く。ポートはlocalhostだけへ公開する。
-- `.env.local` をコンテナから読み込み、値がない場合はサンプルデータへフォールバックする。
+- `.env.local` をコンテナから読み込む。値がない場合、記事は0件とし、地域情報だけローカルデータへフォールバックする。
 - `pnpm install`、Playwrightブラウザ取得、依存更新を含むNode.jsコマンドはすべてコンテナ内で実行する。
 
 ### prod
@@ -47,7 +47,7 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 ## Data and Rendering Flow
 
 1. Astroのビルド時にmicroCMSから全公開記事をページング取得する。
-2. CMSレスポンスを表示用モデルへ正規化する。
+2. CMSレスポンスを表示用モデルへ正規化し、productionでは`genreSlug`が`connection-test`の記事を除外する。
 3. トップ、都道府県、市区町村、スポット記事を静的HTMLとして生成する。
 4. Vercelまたはproductionコンテナが生成物を配信する。
 

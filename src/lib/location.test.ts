@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getDisplayCoordinates, toMapSpot } from "@/lib/location";
-import { spots } from "@/lib/sample-data";
+import { fixtureSpots as spots } from "../../test/fixtures/content";
 
 describe("location visibility", () => {
   it("keeps coordinates for exact spots", () => {
@@ -13,7 +13,7 @@ describe("location visibility", () => {
 
   it("maps a spot to a map-safe shape", () => {
     expect(toMapSpot(spots[1])).toMatchObject({
-      slug: "hakuba-mountain-base",
+      slug: "approximate-test-spot",
       coordinates: null,
       locationVisibility: "approximate",
     });
