@@ -1,6 +1,6 @@
 import { createContentRepository } from "@/lib/content-repository";
+import { fallbackRegions } from "@/lib/fallback-regions";
 import { createMicroCMSContentSource } from "@/lib/microcms-content-source";
-import { regions, spots } from "@/lib/sample-data";
 import type { FetchLike, MicroCMSConfig } from "@/lib/microcms";
 
 const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
@@ -20,9 +20,10 @@ const repository = createContentRepository({
   source: createMicroCMSContentSource({
     config: microCMSConfig,
     fetcher: fetchAtBuildTime,
+    includeTestContent: !import.meta.env.PROD,
   }),
-  fallbackSpots: spots,
-  fallbackRegions: regions,
+  fallbackSpots: [],
+  fallbackRegions,
 });
 
 export const getSpots = repository.getSpots;

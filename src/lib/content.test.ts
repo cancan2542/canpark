@@ -12,7 +12,6 @@ import {
   normalizeMicroCMSSpot,
   toMapSpots,
 } from "@/lib/content";
-import { spots } from "@/lib/sample-data";
 
 describe("content helpers", () => {
   it("only builds API URLs for valid microCMS service IDs and endpoints", () => {
@@ -23,12 +22,11 @@ describe("content helpers", () => {
     expect(microCMSApiUrl("canpark", "../users")).toBeNull();
   });
 
-  it("groups spots by prefecture", async () => {
-    await expect(getSpotsByPrefecture("yamanashi")).resolves.toHaveLength(1);
-  });
-
-  it("groups spots by municipality", async () => {
-    await expect(getSpotsByMunicipality("hakuba")).resolves.toHaveLength(1);
+  it("does not show hard-coded spots when microCMS is unavailable", async () => {
+    await expect(getSpots()).resolves.toEqual([]);
+    await expect(getSpotsByPrefecture("yamanashi")).resolves.toEqual([]);
+    await expect(getSpotsByMunicipality("hakuba")).resolves.toEqual([]);
+    await expect(getSpotBySlug("michi-no-eki-katsuyama")).resolves.toBeUndefined();
   });
 
   it("lists municipalities by parent prefecture", async () => {
@@ -36,29 +34,16 @@ describe("content helpers", () => {
     expect(municipalities.map((municipality) => municipality.slug)).toEqual(["hakuba"]);
   });
 
-  it("keeps the existing content facade available with sample-data fallback", async () => {
-    const [allSpots, allRegions, prefectures, spot, region] = await Promise.all([
-      getSpots(),
+  it("keeps the region fallback available without article data", async () => {
+    const [allRegions, prefectures, region] = await Promise.all([
       getRegions(),
       getPrefectures(),
-      getSpotBySlug("michi-no-eki-katsuyama"),
       getRegionBySlug("yamanashi"),
     ]);
 
-    expect(allSpots).toEqual(spots);
     expect(allRegions).toHaveLength(4);
     expect(prefectures.map((prefecture) => prefecture.slug)).toEqual(["yamanashi", "nagano"]);
-    expect(spot?.id).toBe("spot-katsuyama");
     expect(region?.id).toBe("region-yamanashi");
-  });
-
-  it("creates map spots without leaking approximate coordinates", () => {
-    const mapSpots = toMapSpots(spots);
-    expect(mapSpots.find((spot) => spot.slug === "michi-no-eki-katsuyama")?.coordinates).toEqual({
-      latitude: 35.5082,
-      longitude: 138.7246,
-    });
-    expect(mapSpots.find((spot) => spot.slug === "hakuba-mountain-base")?.coordinates).toBeNull();
   });
 
   it("normalizes the flat microCMS spot schema", () => {
