@@ -11,7 +11,7 @@ type Props = {
 
 const {
   title,
-  description = "車中泊旅行スポットとハザードマップ確認メモを紹介するブログ。",
+  description = "車中泊で訪れたスポットと旅行メモを紹介するブログ。",
   canonicalPath,
   noindex = false,
 } = Astro.props;
@@ -34,19 +34,8 @@ const canonicalUrl = canonicalPath
   </head>
   <body class="font-sans antialiased">
     <header class="border-b border-zinc-200 bg-white/90 backdrop-blur">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <div class="mx-auto flex max-w-6xl items-center px-4 py-4">
         <a href="/" class="text-xl font-bold text-pine">canpark</a>
-        <nav aria-label="メインナビゲーション" class="flex items-center gap-4 text-sm text-zinc-700">
-          <a href="/disclaimer" class="hover:text-pine">免責事項</a>
-          <a
-            href="https://disaportal.gsi.go.jp/"
-            class="hover:text-pine"
-            rel="noreferrer"
-            target="_blank"
-          >
-            ハザードマップ
-          </a>
-        </nav>
       </div>
     </header>
     <main>

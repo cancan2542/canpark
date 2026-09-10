@@ -13,6 +13,7 @@ services:
       ASTRO_TELEMETRY_DISABLED: "1"
       MICROCMS_SERVICE_DOMAIN: ${MICROCMS_SERVICE_DOMAIN:-}
       MICROCMS_API_KEY: ${MICROCMS_API_KEY:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
     env_file:
       - path: .env.local
         required: false

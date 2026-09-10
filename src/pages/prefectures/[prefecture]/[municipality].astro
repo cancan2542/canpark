@@ -38,7 +38,6 @@ export async function getStaticPaths() {
 }
 
 const { prefectureRegion, municipalityRegion, spots } = Astro.props;
-const checkedCount = spots.filter((spot) => Boolean(spot.hazardCheckedAt)).length;
 ---
 
 <BaseLayout
@@ -49,8 +48,6 @@ const checkedCount = spots.filter((spot) => Boolean(spot.hazardCheckedAt)).lengt
     <p class="text-sm text-zinc-500">{prefectureRegion.name}</p>
     <h1 class="mt-2 text-4xl font-bold text-ink">{municipalityRegion.name}</h1>
     <p class="mt-3 max-w-3xl leading-7 text-zinc-700">{municipalityRegion.description}</p>
-    <p class="mt-3 text-sm text-pine">ハザード確認済みスポット: {checkedCount}件</p>
-
     <section class="mt-8" aria-label={`${municipalityRegion.name}のスポット地図`}>
       <PrefectureMap prefectureSlug={prefectureRegion.slug} spots={toMapSpots(spots)} />
     </section>

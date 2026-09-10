@@ -19,7 +19,6 @@ const [viewX, viewY, viewWidth, viewHeight] = prefecture.viewBox.split(" ").map(
 const visibleSpots = spots
   .filter(
     (spot) =>
-      spot.locationVisibility === "exact" &&
       spot.coordinates !== null &&
       Number.isFinite(spot.coordinates.latitude) &&
       Number.isFinite(spot.coordinates.longitude),
