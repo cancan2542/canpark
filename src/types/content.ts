@@ -26,6 +26,7 @@ export type Spot = {
   body: string;
   visitedAt: string;
   coordinates: Coordinates | null;
+  googlePlaceId: string | null;
 };
 
 export type MapSpot = {
