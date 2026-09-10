@@ -1,83 +1,11 @@
 {
   "apiFields": [
     { "fieldId": "title", "name": "タイトル", "kind": "text", "required": true },
-    { "fieldId": "slug", "name": "スラッグ", "kind": "text", "required": true, "isUnique": true },
     { "fieldId": "prefecture", "name": "都道府県", "kind": "text", "required": true },
-    { "fieldId": "prefectureSlug", "name": "都道府県スラッグ", "kind": "text", "required": true },
     { "fieldId": "municipality", "name": "市区町村", "kind": "text", "required": true },
-    { "fieldId": "municipalitySlug", "name": "市区町村スラッグ", "kind": "text", "required": true },
     { "fieldId": "genreName", "name": "ジャンル名", "kind": "text", "required": true },
-    { "fieldId": "genreSlug", "name": "ジャンルスラッグ", "kind": "text", "required": true },
     { "fieldId": "body", "name": "本文", "kind": "textArea", "required": true },
-    { "fieldId": "visitedAt", "name": "訪問日", "kind": "date", "required": true },
-    { "fieldId": "latitude", "name": "緯度", "kind": "number", "required": true },
-    { "fieldId": "longitude", "name": "経度", "kind": "number", "required": true },
-    {
-      "fieldId": "locationVisibility",
-      "name": "位置公開レベル",
-      "kind": "select",
-      "required": true,
-      "multipleSelect": false,
-      "selectItems": [
-        { "id": "exact", "value": "exact" },
-        { "id": "approximate", "value": "approximate" },
-        { "id": "municipality", "value": "municipality" }
-      ]
-    },
-    { "fieldId": "officialUrl", "name": "公式URL", "kind": "text" },
-    { "fieldId": "hazardCheckedAt", "name": "ハザード確認日", "kind": "date", "required": true },
-    { "fieldId": "hazardSourceUrl", "name": "ハザード情報URL", "kind": "text" },
-    { "fieldId": "municipalHazardUrl", "name": "自治体ハザードURL", "kind": "text" },
-    { "fieldId": "hazardMemo", "name": "ハザードメモ", "kind": "textArea", "required": true },
-    {
-      "fieldId": "flood",
-      "name": "洪水",
-      "kind": "select",
-      "required": true,
-      "multipleSelect": false,
-      "selectItems": [
-        { "id": "1", "value": "1" }, { "id": "2", "value": "2" }, { "id": "3", "value": "3" },
-        { "id": "4", "value": "4" }, { "id": "5", "value": "5" },
-        { "id": "unknown", "value": "unknown" }, { "id": "not-applicable", "value": "not_applicable" }
-      ]
-    },
-    {
-      "fieldId": "landslide",
-      "name": "土砂災害",
-      "kind": "select",
-      "required": true,
-      "multipleSelect": false,
-      "selectItems": [
-        { "id": "1", "value": "1" }, { "id": "2", "value": "2" }, { "id": "3", "value": "3" },
-        { "id": "4", "value": "4" }, { "id": "5", "value": "5" },
-        { "id": "unknown", "value": "unknown" }, { "id": "not-applicable", "value": "not_applicable" }
-      ]
-    },
-    {
-      "fieldId": "tsunami",
-      "name": "津波",
-      "kind": "select",
-      "required": true,
-      "multipleSelect": false,
-      "selectItems": [
-        { "id": "1", "value": "1" }, { "id": "2", "value": "2" }, { "id": "3", "value": "3" },
-        { "id": "4", "value": "4" }, { "id": "5", "value": "5" },
-        { "id": "unknown", "value": "unknown" }, { "id": "not-applicable", "value": "not_applicable" }
-      ]
-    },
-    {
-      "fieldId": "stormSurge",
-      "name": "高潮",
-      "kind": "select",
-      "required": true,
-      "multipleSelect": false,
-      "selectItems": [
-        { "id": "1", "value": "1" }, { "id": "2", "value": "2" }, { "id": "3", "value": "3" },
-        { "id": "4", "value": "4" }, { "id": "5", "value": "5" },
-        { "id": "unknown", "value": "unknown" }, { "id": "not-applicable", "value": "not_applicable" }
-      ]
-    },
-    { "fieldId": "fieldTips", "name": "現地Tips", "kind": "textArea", "required": true }
+    { "fieldId": "visitedAt", "name": "訪問日", "kind": "date", "required": true }
   ],
   "customFields": []
 }

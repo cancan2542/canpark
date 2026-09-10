@@ -1,4 +1,4 @@
-# 車中泊ハザード検証ブログ Architecture
+# 車中泊スポットブログ Architecture
 
 ## Architecture Summary
 
@@ -41,17 +41,24 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 
 - `MICROCMS_SERVICE_DOMAIN`
 - `MICROCMS_API_KEY`
+- `GOOGLE_MAPS_API_KEY`
 
 秘密情報とVercel Deploy Hook URLはGit管理しない。Vercel CLIが生成する `.vercel/` もGit管理しない。旧Next.jsの `MICROCMS_PREVIEW_API_KEY` と `REVALIDATE_SECRET` はAstro SSGでは使用しない。
 
+Vercel productionでは上記3環境変数をすべて必須とし、不足している場合は座標のないサイトを誤って公開せずbuildを失敗させる。ローカルでは未設定でも、記事0件と地域フォールバックを収録したJSONを生成できる。
+
 ## Data and Rendering Flow
 
-1. Astroのビルド時にmicroCMSから全公開記事をページング取得する。
-2. CMSレスポンスを表示用モデルへ正規化し、productionでは`genreSlug`が`connection-test`の記事を除外する。
-3. トップ、都道府県、市区町村、スポット記事を静的HTMLとして生成する。
-4. Vercelまたはproductionコンテナが生成物を配信する。
+1. `prebuild`でmicroCMSから全公開記事と地域マスターをページング取得する。
+2. microCMSのコンテンツIDを記事slugにし、地域マスターから都道府県・市区町村slugを解決する。
+3. 全記事をGoogle Places Text Searchで検索し、入力された都道府県・市区町村内の最上位候補から座標を生成する。
+4. 表示に必要な記事・地域情報を `.generated/content.json` へアトミックに生成する。
+5. Astroは外部APIへ接続せず生成JSONだけを読み、全静的HTMLを生成する。
+6. Vercelまたはproductionコンテナが一つのdeploymentとして生成物を配信する。
 
-`locationVisibility` が `exact` の記事だけ地図にピンを表示する。`approximate` と `municipality` は一覧には表示するが正確な座標を地図やHTMLへ出力しない。
+microCMS取得または地域slug解決に失敗した場合はbuildを失敗させ、直前のproduction deploymentを維持する。座標検索だけ失敗した場合は記事を座標`null`で収録し、記事本文と一覧は公開する。地図ピンは表示せず、次回deployで再検索する。
+
+都道府県ページのピンは地域内のおおよその位置を把握する案内として扱う。
 
 ## Map Architecture
 
@@ -129,4 +136,4 @@ Deploy Hookは署名検証を行う自前APIではなく、URLを知る者が実
 
 ## External Data and Attribution
 
-ハザード情報はハザードマップポータルサイトと自治体ハザードマップを基準にし、確認日、出典、加工の有無を記事へ記載する。地図境界は国土数値情報の利用条件に従い、共通フッター等へ出典と加工した旨を表示する。
+地図境界は国土数値情報の利用条件に従い、共通フッター等へ出典と加工した旨を表示する。
