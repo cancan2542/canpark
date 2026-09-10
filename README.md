@@ -32,7 +32,9 @@ docker compose --profile production up --build prod
 
 ## microCMSとデプロイ
 
-Vercelの環境変数へ `MICROCMS_SERVICE_DOMAIN`、`MICROCMS_API_KEY`、`GOOGLE_MAPS_API_KEY` を設定します。`pnpm build` のprebuild処理がmicroCMSの全公開データを取得し、Google Placesで座標を生成して `.generated/content.json` を作成します。AstroはこのJSONだけを読み、同じdeployment内で静的ページを生成します。生成JSONはビルド成果物でありGit管理しません。
+Vercelの環境変数へ `MICROCMS_SERVICE_DOMAIN`、`MICROCMS_API_KEY`、`GOOGLE_MAPS_API_KEY`、`GOOGLE_MAPS_EMBED_API_KEY` を設定します。`pnpm build` のprebuild処理がmicroCMSの全公開データを取得し、Google Placesで座標とPlace IDを生成して `.generated/content.json` を作成します。AstroはこのJSONだけを読み、同じdeployment内で静的ページを生成します。生成JSONはビルド成果物でありGit管理しません。
+
+`GOOGLE_MAPS_API_KEY` はPlaces API (New) だけを許可するサーバー用キーです。`GOOGLE_MAPS_EMBED_API_KEY` はMaps Embed APIだけを許可する埋め込み専用キーとし、Google Cloud側で `https://canpark.blog/*` など利用するサイトのHTTPリファラー制限を設定してください。Embed APIの仕様上、後者は生成HTMLのiframe URLから閲覧可能ですが、リポジトリ、microCMS、生成JSONには保存しません。
 
 コンテンツIDが `microcms-display-test-` で始まる記事は開発時の接続・描画確認専用です。productionビルドでは一覧と記事ページの生成対象から除外されます。
 

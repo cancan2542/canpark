@@ -3,6 +3,7 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  "frame-src https://www.google.com",
   "object-src 'none'",
   "script-src 'self'",
   "script-src-attr 'none'",
