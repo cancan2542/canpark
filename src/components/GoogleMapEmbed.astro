@@ -1,0 +1,33 @@
+---
+import SectionHeader from "@/components/SectionHeader.astro";
+import { getGoogleMapsEmbedUrl } from "@/lib/google-maps";
+import type { Spot } from "@/types/content";
+
+type Props = {
+  spot: Spot;
+};
+
+const { spot } = Astro.props;
+const embedUrl = getGoogleMapsEmbedUrl(spot.googlePlaceId, process.env.GOOGLE_MAPS_EMBED_API_KEY);
+---
+
+{
+  embedUrl && (
+    <section class="mt-10">
+      <SectionHeader
+        title="Google マップ"
+        description="スポットの場所を確認できます。現地の案内や利用ルールもあわせてご確認ください。"
+      />
+      <div class="aspect-video min-h-72 overflow-hidden rounded-xl border border-zinc-200 bg-mist">
+        <iframe
+          class="h-full w-full border-0"
+          src={embedUrl}
+          title={`${spot.title}のGoogle マップ`}
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        />
+      </div>
+    </section>
+  )
+}

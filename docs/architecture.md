@@ -15,7 +15,7 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 - Production Container: nginx-unprivileged（nonroot、digest固定）
 - CMS: microCMS
 - Hosting: Vercel
-- Map: 国土数値情報由来のリポジトリ内SVG（外部タイル・WebGL・地図ライブラリ不使用）
+- Map: 地域一覧は国土数値情報由来のリポジトリ内SVG、スポット詳細はGoogle Maps Embed API
 - Unit/Integration Test: Vitest
 - E2E Test: Playwright
 - Formatter/Linter: ESLint + Prettier
@@ -42,16 +42,19 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 - `MICROCMS_SERVICE_DOMAIN`
 - `MICROCMS_API_KEY`
 - `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_MAPS_EMBED_API_KEY`
 
 秘密情報とVercel Deploy Hook URLはGit管理しない。Vercel CLIが生成する `.vercel/` もGit管理しない。旧Next.jsの `MICROCMS_PREVIEW_API_KEY` と `REVALIDATE_SECRET` はAstro SSGでは使用しない。
 
-Vercel productionでは上記3環境変数をすべて必須とし、不足している場合は座標のないサイトを誤って公開せずbuildを失敗させる。ローカルでは未設定でも、記事0件と地域フォールバックを収録したJSONを生成できる。
+`GOOGLE_MAPS_API_KEY` はPlaces API (New)だけへ制限したサーバー用キーとし、生成物へ含めない。`GOOGLE_MAPS_EMBED_API_KEY` はMaps Embed APIだけへ制限した別キーとし、許可する本番・確認用ドメインをHTTPリファラーで制限する。Embed APIの仕様により埋め込み用キーはブラウザから確認できるため、秘密値として隠すのではなく、用途と利用元をGoogle Cloud側で制限する。キー値はリポジトリ、microCMS、生成JSONには保存しない。
+
+Vercel productionでは上記4環境変数をすべて必須とし、不足している場合は地図機能が欠けたサイトを誤って公開せずbuildを失敗させる。ローカルでは未設定でも、記事0件と地域フォールバックを収録したJSONを生成できる。
 
 ## Data and Rendering Flow
 
 1. `prebuild`でmicroCMSから全公開記事と地域マスターをページング取得する。
 2. microCMSのコンテンツIDを記事slugにし、地域マスターから都道府県・市区町村slugを解決する。
-3. 全記事をGoogle Places Text Searchで検索し、入力された都道府県・市区町村内の最上位候補から座標を生成する。
+3. 全記事をGoogle Places Text Searchで検索し、入力された都道府県・市区町村内の最上位候補から座標とPlace IDを生成する。
 4. 表示に必要な記事・地域情報を `.generated/content.json` へアトミックに生成する。
 5. Astroは外部APIへ接続せず生成JSONだけを読み、全静的HTMLを生成する。
 6. Vercelまたはproductionコンテナが一つのdeploymentとして生成物を配信する。
@@ -60,9 +63,11 @@ microCMS取得または地域slug解決に失敗した場合はbuildを失敗さ
 
 都道府県ページのピンは地域内のおおよその位置を把握する案内として扱う。
 
+スポット詳細ページ末尾のGoogleマップはPlace IDを指定したiframeとして生成する。埋め込み用APIキーはビルド環境から直接iframe URLへ設定し、`.generated/content.json` には含めない。Place IDまたは埋め込み用キーがない場合はGoogleマップ欄を表示しない。
+
 ## Map Architecture
 
-全国地図と都道府県地図は、国土交通省「国土数値情報（行政区域データ）」を加工したSVGを使用する。MapLibre、外部地図タイル、WebGLは使用しない。
+全国地図と都道府県地図は、国土交通省「国土数値情報（行政区域データ）」を加工したSVGを使用する。MapLibre、外部地図タイル、WebGLは使用しない。スポット詳細ページだけGoogle Maps Embed APIを使用する。
 
 - 全国地図は都道府県を選択でき、hover/focus時に都道府県名を表示する。
 - 都道府県地図は公開可能な記事スポットをピンで示す。
@@ -74,7 +79,7 @@ microCMS取得または地域slug解決に失敗した場合はbuildを失敗さ
 
 Vercelとproductionコンテナの両方で次のレスポンスヘッダーを付与する。
 
-- `Content-Security-Policy`: 既定の取得元をsame-originへ制限し、object・frame埋め込みを禁止する。
+- `Content-Security-Policy`: 既定の取得元をsame-originへ制限し、objectを禁止する。frameはGoogle Maps Embed APIの配信元だけを許可する。
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `X-Frame-Options: DENY` とCSP `frame-ancestors 'none'`

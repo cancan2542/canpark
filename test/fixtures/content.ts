@@ -12,6 +12,7 @@ export const fixtureSpots: Spot[] = [
     body: "テスト用の記事本文です。",
     visitedAt: "2026-08-01",
     coordinates: { latitude: 35.5082, longitude: 138.7246 },
+    googlePlaceId: "ChIJlocatedFixture",
   },
   {
     title: "座標未取得のテストスポット",
@@ -24,5 +25,6 @@ export const fixtureSpots: Spot[] = [
     body: "テスト用の記事本文です。",
     visitedAt: "2026-08-03",
     coordinates: null,
+    googlePlaceId: null,
   },
 ];
