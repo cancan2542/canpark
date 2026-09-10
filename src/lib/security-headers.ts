@@ -7,7 +7,7 @@ const contentSecurityPolicy = [
   "script-src 'self'",
   "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://images.microcms-assets.io",
+  "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self'",
   "manifest-src 'self'",

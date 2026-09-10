@@ -1,27 +1,10 @@
 import { createContentRepository } from "@/lib/content-repository";
 import { fallbackRegions } from "@/lib/fallback-regions";
-import { createMicroCMSContentSource } from "@/lib/microcms-content-source";
-import type { FetchLike, MicroCMSConfig } from "@/lib/microcms";
-
-const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
-const apiKey = process.env.MICROCMS_API_KEY;
-const microCMSConfig: MicroCMSConfig = { serviceDomain, apiKey };
-
-const fetchAtBuildTime: FetchLike = (input, init) => fetch(input, init);
-
-export { microCMSApiUrl } from "@/lib/microcms";
-export {
-  normalizeMicroCMSSpot,
-  type MicroCMSFlatSpot,
-} from "@/lib/content-normalizer";
+import { createGeneratedContentSource } from "@/lib/generated-content-source";
 export { toMapSpots } from "@/lib/content-repository";
 
 const repository = createContentRepository({
-  source: createMicroCMSContentSource({
-    config: microCMSConfig,
-    fetcher: fetchAtBuildTime,
-    includeTestContent: !import.meta.env.PROD,
-  }),
+  source: createGeneratedContentSource(),
   fallbackSpots: [],
   fallbackRegions,
 });

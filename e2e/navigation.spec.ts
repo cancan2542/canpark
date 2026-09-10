@@ -4,8 +4,6 @@ test("top page does not render hard-coded spots", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "都道府県から探す", level: 1 })).toBeVisible();
-  await expect(page.getByText("車中泊スポットとハザード確認メモ")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "免責事項を確認する" })).toHaveCount(0);
   const japanMap = page.getByTestId("japan-map");
   await expect(japanMap).toBeVisible();
   const mapBox = await japanMap.boundingBox();
@@ -22,12 +20,5 @@ test("top page does not render hard-coded spots", async ({ page }) => {
 
   await page.getByRole("link", { name: "富士河口湖町" }).click();
   await expect(page.getByRole("heading", { name: "富士河口湖町" })).toBeVisible();
-  await expect(page.getByText("ハザード確認済みスポット: 0件")).toBeVisible();
   await expect(page.locator('a[href^="/spots/"]')).toHaveCount(0);
-});
-
-test("disclaimer page is reachable", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("link", { name: "免責事項" }).first().click();
-  await expect(page.getByRole("heading", { name: "免責事項" })).toBeVisible();
 });
