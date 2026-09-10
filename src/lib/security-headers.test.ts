@@ -15,10 +15,11 @@ describe("securityHeaders", () => {
     );
   });
 
-  it("allows only local map resources while denying framing and plugins", () => {
+  it("allows only Google Maps embeds while denying framing of this site and plugins", () => {
     const csp = securityHeaders.find(({ key }) => key === "Content-Security-Policy")?.value;
 
     expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("frame-src https://www.google.com");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("script-src-attr 'none'");
     expect(csp).not.toContain("cyberjapandata.gsi.go.jp");

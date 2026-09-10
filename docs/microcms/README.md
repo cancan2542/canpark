@@ -9,7 +9,7 @@
 
 詳細なフィールド種別と必須設定は [spots-schema.json](spots-schema.json) を正とする。`id`, `createdAt`, `updatedAt`, `publishedAt`, `revisedAt` はmicroCMSが自動付与するため、独自カラムとして作成しない。
 
-記事URLにはmicroCMSの`id`を使う。`prefectureSlug`と`municipalitySlug`は地域マスターから、緯度・経度はデプロイ時のGoogle Places検索から生成するため、記事編集画面では入力しない。
+記事URLにはmicroCMSの`id`を使う。`prefectureSlug`と`municipalitySlug`は地域マスターから、緯度・経度とGoogle Place IDはデプロイ時のGoogle Places検索から生成するため、記事編集画面では入力しない。
 
 ## 手動更新が必要なAPIスキーマ
 
@@ -34,6 +34,6 @@
 5. `spots-schema.json` と同じフィールドID、種類、必須設定になっていることを確認して保存する。
 6. Deploy HookによるVercelの再ビルドが成功したことを確認し、トップ、地域ページ、スポット記事を確認する。
 
-全記事を座標検索する。入力した都道府県・市区町村内の最上位候補を使い、都道府県ページでは案内用のピンを表示する。Google Placesが候補を返さない場合や一時的に失敗した場合でも記事は公開し、地図ピンだけ表示しない。次のデプロイで再検索する。
+全記事を座標検索する。入力した都道府県・市区町村内の最上位候補を使い、都道府県ページでは案内用のピン、スポット詳細ページではGoogleマップを表示する。Google Placesが候補を返さない場合や一時的に失敗した場合でも記事は公開し、地図だけ表示しない。次のデプロイで再検索する。
 
 スキーマのエクスポート方法は [microCMS公式ドキュメント](https://document.microcms.io/manual/export-and-import-api-schema) を参照する。
