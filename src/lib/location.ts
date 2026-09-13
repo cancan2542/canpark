@@ -1,17 +1,14 @@
 import type { Coordinates, MapSpot, Spot } from "@/types/content";
 
 export function getDisplayCoordinates(spot: Spot): Coordinates | null {
-  if (spot.locationVisibility !== "exact") return null;
   return spot.coordinates;
 }
 
 export function toMapSpot(spot: Spot): MapSpot {
   return {
-    id: spot.id,
     title: spot.title,
     slug: spot.slug,
     coordinates: getDisplayCoordinates(spot),
-    locationVisibility: spot.locationVisibility,
     prefecture: spot.prefecture,
     municipality: spot.municipality,
   };

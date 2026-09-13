@@ -5,11 +5,15 @@
   "packageManager": "pnpm@10.15.0",
   "pnpm": {
     "overrides": {
+      "js-yaml": "4.3.2",
       "postcss": "8.5.26"
     }
   },
   "scripts": {
+    "content:generate": "node scripts/generate-content.mjs",
+    "predev": "pnpm content:generate",
     "dev": "astro dev",
+    "prebuild": "pnpm content:generate",
     "build": "astro build",
     "preview": "astro preview --host 0.0.0.0",
     "start": "astro preview --host 0.0.0.0",

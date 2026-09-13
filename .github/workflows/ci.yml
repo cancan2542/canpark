@@ -2,8 +2,6 @@ name: CI
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 0 * * 1"
   pull_request:
   push:
     branches:
@@ -14,10 +12,48 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+  cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      markdown_only: ${{ steps.diff.outputs.markdown_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        name: Detect Markdown-only diff
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          markdown_only=false
+          case "$EVENT_NAME" in
+            pull_request)
+              base_sha=$BASE_SHA
+              ;;
+            push)
+              base_sha=$BEFORE_SHA
+              ;;
+            *)
+              base_sha=""
+              ;;
+          esac
+
+          if [ -n "$base_sha" ] && ./scripts/is-markdown-only.sh "$base_sha" "$HEAD_SHA"; then
+            markdown_only=true
+          fi
+
+          echo "markdown_only=$markdown_only" >> "$GITHUB_OUTPUT"
+
   quality:
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -25,39 +61,46 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Scan Git history for secrets
-        run: >-
-          docker run --rm --volume "$PWD:/repo:ro"
-          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
-          git /repo --config /repo/.gitleaks.toml --redact --no-banner
-      - name: Scan dependencies and configuration
-        run: >-
-          docker run --rm --volume "$PWD:/repo:ro"
-          --volume "trivy-cache:/root/.cache/trivy"
-          aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
-          fs --scanners vuln,misconfig --include-dev-deps
-          --severity HIGH,CRITICAL --exit-code 1 --quiet /repo
+      - name: Lint Markdown
+        run: ./scripts/security-check.sh markdown
+      - name: Pre-merge - scan Git history for secrets
+        if: needs.changes.outputs.markdown_only != 'true'
+        run: ./scripts/security-check.sh repository
+      - name: Pre-merge - scan dependencies and configuration
+        if: needs.changes.outputs.markdown_only != 'true'
+        run: ./scripts/security-check.sh filesystem
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        if: needs.changes.outputs.markdown_only != 'true'
         with:
           version: 10.15.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: needs.changes.outputs.markdown_only != 'true'
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
-      - run: pnpm build
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm install --frozen-lockfile
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm typecheck
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm lint
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm test
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm test:e2e
+      - if: needs.changes.outputs.markdown_only != 'true'
+        run: pnpm build
       - name: Build production container
+        if: needs.changes.outputs.markdown_only != 'true'
         run: docker build --target runner --tag canpark:ci .
       - name: Smoke test production container
+        if: needs.changes.outputs.markdown_only != 'true'
         run: |
           docker run --detach --name canpark-ci --publish 127.0.0.1:8080:8080 canpark:ci
           trap 'docker rm --force canpark-ci' EXIT
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null; then
               exit 0
             fi
@@ -65,19 +108,13 @@ jobs:
           done
           docker logs canpark-ci
           exit 1
-      - name: Export production container for scanning
-        run: docker image save --output /tmp/canpark-ci.tar canpark:ci
-      - name: Scan production container
-        run: >-
-          docker run --rm
-          --volume "/tmp/canpark-ci.tar:/scan/image.tar:ro"
-          --volume "trivy-cache:/root/.cache/trivy"
-          aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
-          image --input /scan/image.tar --scanners vuln,secret
-          --severity HIGH,CRITICAL --exit-code 1 --quiet
+      - name: Pre-merge - scan production container
+        if: needs.changes.outputs.markdown_only != 'true'
+        run: ./scripts/security-check.sh image canpark:ci
 
   codeql:
     name: CodeQL
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -85,13 +122,19 @@ jobs:
       packages: read
       security-events: write
     steps:
+      - name: Skip CodeQL for Markdown-only diff
+        if: needs.changes.outputs.markdown_only == 'true'
+        run: echo "CodeQL skipped because the diff contains only Markdown files."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.markdown_only != 'true'
         with:
           persist-credentials: false
       - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: needs.changes.outputs.markdown_only != 'true'
         with:
           languages: javascript-typescript
           queries: security-extended
       - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: needs.changes.outputs.markdown_only != 'true'
         with:
           category: /language:javascript-typescript
