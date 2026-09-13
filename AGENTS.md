@@ -21,3 +21,12 @@
 
 - pre-commit、pre-push、pre-merge、pre-deployの各観点のチェックでエラーが発生した場合は、チェックを回避またはスキップしない。
 - すべての対象チェックが成功するまで、エラー原因の修正、必要なコミット、該当操作の再実行を繰り返す。
+
+## Dependabot pull requests
+
+- Dependabot PRは無条件で自動マージせず、mainや既存のユーザー作業から隔離したworktreeでローカル検証する。
+- 更新対象のadvisory、依存経路、lockfile上の解決バージョンを確認し、修正版が影響範囲外であることを証明する。
+- 安全な防御的検証を優先し、脆弱性の攻撃PoCや実在する機密ファイルの読取は行わない。必要に応じて修正コードの静的確認とスキャナ結果を代替証拠とする。
+- typecheck、lint、unit、E2E、本番build、`./scripts/security-check.sh full`およびPRの必須CIがすべて成功してからマージする。
+- Trivyは開発依存を含む`MEDIUM,HIGH,CRITICAL`を検査し、セキュリティ更新では対象alertの解消も確認する。
+- mainへマージした後は、本番デプロイの成功まで確認する。
