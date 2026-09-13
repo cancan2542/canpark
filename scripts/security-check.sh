@@ -37,11 +37,21 @@ require_docker() {
 
 scan_staged_secrets() {
   echo "==> Scanning staged changes for secrets"
-  docker run --rm \
-    --volume "$repo_root:/repo:ro" \
-    --workdir /repo \
-    "$GITLEAKS_IMAGE" \
-    git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  if [ -f "$repo_root/.git" ]; then
+    git_common_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      --volume "$git_common_dir:$git_common_dir:ro" \
+      --workdir /repo \
+      "$GITLEAKS_IMAGE" \
+      git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  else
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      --workdir /repo \
+      "$GITLEAKS_IMAGE" \
+      git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  fi
 }
 
 scan_repository_secrets() {
