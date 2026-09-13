@@ -24,6 +24,25 @@ docker compose run --rm app pnpm test:e2e
 docker compose run --rm app pnpm build
 ```
 
+Git hooksを有効にすると、週次cronに代わり変更のタイミングに合わせてセキュリティ検査を実行します。追加のライブラリやCLIはインストールせず、GitとDockerだけを使用します。ローカルの作業コピーごとに一度、次を実行してください。
+
+```sh
+./scripts/install-git-hooks.sh
+```
+
+| タイミング | 検査内容 |
+| --- | --- |
+| pre-commit | ステージ済み差分の秘密情報 |
+| pre-push | 全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
+| pre-merge | ローカルのmerge commit作成時は完全検査、Pull Requestではproduction imageとCodeQLを含む必須CI |
+| pre-deploy | mainへのmerge前の必須CIとVercel build時の環境変数・CMSデータ検証。手動の完全検査は `./scripts/security-check.sh pre-deploy` |
+
+作業ツリーと全Git履歴の秘密情報、依存関係・設定、production imageをまとめてローカル検査する場合は次を実行します。Codexでは`/skills`から`Security Check`を選ぶか、`$security-check`を指定して同じ検査を実行できます。
+
+```sh
+./scripts/security-check.sh full
+```
+
 本番相当の静的配信コンテナは次のコマンドで起動し、<http://127.0.0.1:8080> で確認します。
 
 ```sh
