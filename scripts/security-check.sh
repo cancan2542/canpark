@@ -4,6 +4,7 @@ set -eu
 
 GITLEAKS_IMAGE="ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
 TRIVY_IMAGE="aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969"
+MARKDOWNLINT_IMAGE="davidanson/markdownlint-cli2:v0.23.2@sha256:839558fd0d36c46da0e01ea84fd1d20a2822b5a8a60c16dc9708f0bb7c9e903b"
 LOCAL_IMAGE_TAG="canpark:security-check-$$"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -74,6 +75,14 @@ scan_filesystem() {
     --severity HIGH,CRITICAL --exit-code 1 --quiet /repo
 }
 
+scan_markdown() {
+  echo "==> Linting Markdown"
+  docker run --rm \
+    --volume "$repo_root:/workdir:ro" \
+    "$MARKDOWNLINT_IMAGE" \
+    "**/*.md" "**/*.markdown" "#node_modules" "#.git"
+}
+
 scan_image() {
   image_tag=$1
   archive_path=$(mktemp "${TMPDIR:-/tmp}/canpark-security-image.XXXXXX")
@@ -94,6 +103,7 @@ scan_image() {
 }
 
 run_full_scan() {
+  scan_markdown
   scan_working_tree_secrets
   scan_repository_secrets
   scan_filesystem
@@ -105,18 +115,21 @@ run_full_scan() {
 }
 
 run_pre_push_scan() {
+  scan_markdown
   scan_repository_secrets
   scan_filesystem
 }
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/security-check.sh <pre-commit|pre-push|pre-merge|pre-deploy|staged|filesystem|repository|image|full> [image-tag]
+Usage: scripts/security-check.sh <pre-commit|pre-push|pre-merge|pre-deploy|markdown|staged|filesystem|repository|image|full> [mode-or-image-tag]
 
   pre-commit   Scan staged changes before creating a commit.
-  pre-push     Scan Git history, dependencies, and configuration before push.
+  pre-push     Lint Markdown, then scan Git history, dependencies, and configuration.
+               Pass "markdown-only" to skip the non-Markdown scans.
   pre-merge    Run the complete scan before creating a local merge commit.
   pre-deploy   Run the complete scan as a manual deployment-readiness check.
+  markdown     Lint all Markdown files.
   staged       Scan staged changes for secrets.
   filesystem   Scan dependencies and configuration for High/Critical issues.
   repository   Scan the complete Git history for secrets.
@@ -134,12 +147,26 @@ case "${1:-}" in
     scan_staged_secrets
     ;;
   pre-push)
-    [ "$#" -eq 1 ] || usage
-    run_pre_push_scan
+    [ "$#" -le 2 ] || usage
+    case "${2:-full}" in
+      markdown-only)
+        scan_markdown
+        ;;
+      full)
+        run_pre_push_scan
+        ;;
+      *)
+        usage
+        ;;
+    esac
     ;;
   pre-merge|pre-deploy)
     [ "$#" -eq 1 ] || usage
     run_full_scan
+    ;;
+  markdown)
+    [ "$#" -eq 1 ] || usage
+    scan_markdown
     ;;
   staged)
     [ "$#" -eq 1 ] || usage
