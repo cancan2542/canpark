@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Check"
+  short_description: "canparkを秘密情報・脆弱性・設定不備について検査"
+  default_prompt: "$security-check を使ってcanparkの全ローカルセキュリティ検査を実行してください。"
