@@ -33,9 +33,11 @@ Git hooksを有効にすると、週次cronに代わり変更のタイミング�
 | タイミング | 検査内容 |
 | --- | --- |
 | pre-commit | ステージ済み差分の秘密情報 |
-| pre-push | 全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
+| pre-push | 専用Dockerコンテナによるmarkdownlint、全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
 | pre-merge | ローカルのmerge commit作成時は完全検査、Pull Requestではproduction imageとCodeQLを含む必須CI |
 | pre-deploy | mainへのmerge前の必須CIとVercel build時の環境変数・CMSデータ検証。手動の完全検査は `./scripts/security-check.sh pre-deploy` |
+
+push対象またはmerge commitの差分が `.md` または `.markdown` だけの場合、pre-commitの秘密情報検査とmarkdownlint以外をスキップする。Pull Request CIも `quality` でmarkdownlintだけを実行し、他のアプリ・セキュリティ検査をスキップする。差分を判定できない場合はすべて実行する。
 
 作業ツリーと全Git履歴の秘密情報、依存関係・設定、production imageをまとめてローカル検査する場合は次を実行します。Codexでは`/skills`から`Security Check`を選ぶか、`$security-check`を指定して同じ検査を実行できます。
 
