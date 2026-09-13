@@ -37,19 +37,38 @@ require_docker() {
 
 scan_staged_secrets() {
   echo "==> Scanning staged changes for secrets"
-  docker run --rm \
-    --volume "$repo_root:/repo:ro" \
-    --workdir /repo \
-    "$GITLEAKS_IMAGE" \
-    git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  if [ -f "$repo_root/.git" ]; then
+    git_common_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      --volume "$git_common_dir:$git_common_dir:ro" \
+      --workdir /repo \
+      "$GITLEAKS_IMAGE" \
+      git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  else
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      --workdir /repo \
+      "$GITLEAKS_IMAGE" \
+      git --pre-commit --staged --config /repo/.gitleaks.toml --redact --no-banner
+  fi
 }
 
 scan_repository_secrets() {
   echo "==> Scanning Git history for secrets"
-  docker run --rm \
-    --volume "$repo_root:/repo:ro" \
-    "$GITLEAKS_IMAGE" \
-    git /repo --config /repo/.gitleaks.toml --redact --no-banner
+  if [ -f "$repo_root/.git" ]; then
+    git_common_dir=$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir)
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      --volume "$git_common_dir:$git_common_dir:ro" \
+      "$GITLEAKS_IMAGE" \
+      git /repo --config /repo/.gitleaks.toml --redact --no-banner
+  else
+    docker run --rm \
+      --volume "$repo_root:/repo:ro" \
+      "$GITLEAKS_IMAGE" \
+      git /repo --config /repo/.gitleaks.toml --redact --no-banner
+  fi
 }
 
 scan_working_tree_secrets() {
@@ -72,7 +91,7 @@ scan_filesystem() {
     --skip-dirs /repo/.next \
     --skip-dirs /repo/.astro \
     --skip-dirs /repo/dist \
-    --severity HIGH,CRITICAL --exit-code 1 --quiet /repo
+    --severity MEDIUM,HIGH,CRITICAL --exit-code 1 --quiet /repo
 }
 
 scan_markdown() {
@@ -96,7 +115,7 @@ scan_image() {
     --volume "trivy-cache:/root/.cache/trivy" \
     "$TRIVY_IMAGE" \
     image --input /scan/image.tar --scanners vuln,secret \
-    --severity HIGH,CRITICAL --exit-code 1 --quiet
+    --severity MEDIUM,HIGH,CRITICAL --exit-code 1 --quiet
 
   rm -f "$archive_path"
   archive_path=""
@@ -131,7 +150,7 @@ Usage: scripts/security-check.sh <pre-commit|pre-push|pre-merge|pre-deploy|markd
   pre-deploy   Run the complete scan as a manual deployment-readiness check.
   markdown     Lint all Markdown files.
   staged       Scan staged changes for secrets.
-  filesystem   Scan dependencies and configuration for High/Critical issues.
+  filesystem   Scan dependencies and configuration for Medium/High/Critical issues.
   repository   Scan the complete Git history for secrets.
   image        Scan an existing production image (default: canpark:ci).
   full         Scan the working tree, repository, filesystem, and a locally built image.
