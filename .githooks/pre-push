@@ -1,0 +1,37 @@
+#!/bin/sh
+
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+zero_oid=0000000000000000000000000000000000000000
+markdown_only=true
+saw_update=false
+
+while read -r _local_ref local_oid _remote_ref remote_oid; do
+  saw_update=true
+
+  if [ "$local_oid" = "$zero_oid" ]; then
+    markdown_only=false
+    continue
+  fi
+
+  if [ "$remote_oid" = "$zero_oid" ]; then
+    remote_head=$(git symbolic-ref --quiet "refs/remotes/$1/HEAD" 2>/dev/null || true)
+    if [ -z "$remote_head" ]; then
+      remote_head="refs/remotes/$1/main"
+    fi
+    base_oid=$(git merge-base "$local_oid" "$remote_head" 2>/dev/null || true)
+  else
+    base_oid=$remote_oid
+  fi
+
+  if [ -z "$base_oid" ] || ! "$repo_root/scripts/is-markdown-only.sh" "$base_oid" "$local_oid"; then
+    markdown_only=false
+  fi
+done
+
+if [ "$saw_update" = true ] && [ "$markdown_only" = true ]; then
+  exec "$repo_root/scripts/security-check.sh" pre-push markdown-only
+fi
+
+exec "$repo_root/scripts/security-check.sh" pre-push full

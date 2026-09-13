@@ -100,6 +100,7 @@ export function resolveSpot(source, regions) {
     body: requireText(source, "body", id),
     visitedAt: requireText(source, "visitedAt", id).slice(0, 10),
     coordinates: null,
+    googlePlaceId: null,
   };
 }
 
@@ -139,7 +140,7 @@ export async function geocodeSpot(spot, { apiKey, fetcher = fetch }) {
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location",
     },
     body: JSON.stringify({
       textQuery: `${spot.title} ${spot.municipality} ${spot.prefecture}`,
@@ -153,8 +154,11 @@ export async function geocodeSpot(spot, { apiKey, fetcher = fetch }) {
   const candidate = selectPlaceCandidate(Array.isArray(data.places) ? data.places : [], spot);
   if (!candidate) return null;
   return {
-    latitude: candidate.location.latitude,
-    longitude: candidate.location.longitude,
+    coordinates: {
+      latitude: candidate.location.latitude,
+      longitude: candidate.location.longitude,
+    },
+    googlePlaceId: typeof candidate.id === "string" && candidate.id !== "" ? candidate.id : null,
   };
 }
 
@@ -185,6 +189,9 @@ export async function generateContent({
   if (env.VERCEL_ENV === "production" && !env.GOOGLE_MAPS_API_KEY) {
     throw new Error("GOOGLE_MAPS_API_KEY is required in production");
   }
+  if (env.VERCEL_ENV === "production" && !env.GOOGLE_MAPS_EMBED_API_KEY) {
+    throw new Error("GOOGLE_MAPS_EMBED_API_KEY is required in production");
+  }
 
   const fallbackRegions = await loadFallbackRegions();
   if (!serviceDomain && !apiKey) {
@@ -206,16 +213,16 @@ export async function generateContent({
   const spots = [];
   for (const spot of resolvedSpots) {
     try {
-      const coordinates = await geocodeSpot(spot, {
+      const place = await geocodeSpot(spot, {
         apiKey: env.GOOGLE_MAPS_API_KEY,
         fetcher,
       });
-      if (!coordinates) {
+      if (!place) {
         console.warn(
           `No coordinates found for ${spot.slug}; article will be published without a map pin.`,
         );
       }
-      spots.push({ ...spot, coordinates });
+      spots.push(place ? { ...spot, ...place } : spot);
     } catch (error) {
       console.warn(
         `${error instanceof Error ? error.message : String(error)} for ${spot.slug}; article will be published without a map pin.`,

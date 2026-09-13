@@ -33,6 +33,16 @@ describe("generated content", () => {
         },
       }),
     ).rejects.toThrow("GOOGLE_MAPS_API_KEY is required in production");
+    await expect(
+      generateContent({
+        env: {
+          VERCEL_ENV: "production",
+          MICROCMS_SERVICE_DOMAIN: "canpark",
+          MICROCMS_API_KEY: "key",
+          GOOGLE_MAPS_API_KEY: "places-key",
+        },
+      }),
+    ).rejects.toThrow("GOOGLE_MAPS_EMBED_API_KEY is required in production");
   });
 
   it("only builds microCMS URLs from valid identifiers", () => {
@@ -85,6 +95,7 @@ describe("generated content", () => {
       body: "本文",
       visitedAt: "2026-09-10",
       coordinates: null,
+      googlePlaceId: null,
     });
   });
 
@@ -131,6 +142,7 @@ describe("generated content", () => {
           JSON.stringify({
             places: [
               {
+                id: "ChIJexample",
                 displayName: { text: "道の駅かつやま" },
                 formattedAddress: "日本、山梨県南都留郡富士河口湖町勝山",
                 location: { latitude: 35.5, longitude: 138.7 },
@@ -142,15 +154,16 @@ describe("generated content", () => {
     const spot = resolveSpot(cmsSpot, fallbackRegions);
 
     await expect(geocodeSpot(spot, { apiKey: "key", fetcher })).resolves.toEqual({
-      latitude: 35.5,
-      longitude: 138.7,
+      coordinates: { latitude: 35.5, longitude: 138.7 },
+      googlePlaceId: "ChIJexample",
     });
     expect(fetcher).toHaveBeenCalledWith(
       "https://places.googleapis.com/v1/places:searchText",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
-          "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location",
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.location",
         }),
       }),
     );

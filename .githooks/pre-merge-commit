@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+
+if "$repo_root/scripts/is-markdown-only.sh" --cached; then
+  "$repo_root/scripts/security-check.sh" pre-commit
+  exec "$repo_root/scripts/security-check.sh" markdown
+fi
+
+exec "$repo_root/scripts/security-check.sh" pre-merge

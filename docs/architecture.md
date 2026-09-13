@@ -15,7 +15,7 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 - Production Container: nginx-unprivileged（nonroot、digest固定）
 - CMS: microCMS
 - Hosting: Vercel
-- Map: 国土数値情報由来のリポジトリ内SVG（外部タイル・WebGL・地図ライブラリ不使用）
+- Map: 地域一覧は国土数値情報由来のリポジトリ内SVG、スポット詳細はGoogle Maps Embed API
 - Unit/Integration Test: Vitest
 - E2E Test: Playwright
 - Formatter/Linter: ESLint + Prettier
@@ -42,16 +42,19 @@ Astro + TypeScript + microCMSで静的サイトを生成し、Vercelで配信す
 - `MICROCMS_SERVICE_DOMAIN`
 - `MICROCMS_API_KEY`
 - `GOOGLE_MAPS_API_KEY`
+- `GOOGLE_MAPS_EMBED_API_KEY`
 
 秘密情報とVercel Deploy Hook URLはGit管理しない。Vercel CLIが生成する `.vercel/` もGit管理しない。旧Next.jsの `MICROCMS_PREVIEW_API_KEY` と `REVALIDATE_SECRET` はAstro SSGでは使用しない。
 
-Vercel productionでは上記3環境変数をすべて必須とし、不足している場合は座標のないサイトを誤って公開せずbuildを失敗させる。ローカルでは未設定でも、記事0件と地域フォールバックを収録したJSONを生成できる。
+`GOOGLE_MAPS_API_KEY` はPlaces API (New)だけへ制限したサーバー用キーとし、生成物へ含めない。`GOOGLE_MAPS_EMBED_API_KEY` はMaps Embed APIだけへ制限した別キーとし、許可する本番・確認用ドメインをHTTPリファラーで制限する。Embed APIの仕様により埋め込み用キーはブラウザから確認できるため、秘密値として隠すのではなく、用途と利用元をGoogle Cloud側で制限する。キー値はリポジトリ、microCMS、生成JSONには保存しない。
+
+Vercel productionでは上記4環境変数をすべて必須とし、不足している場合は地図機能が欠けたサイトを誤って公開せずbuildを失敗させる。ローカルでは未設定でも、記事0件と地域フォールバックを収録したJSONを生成できる。
 
 ## Data and Rendering Flow
 
 1. `prebuild`でmicroCMSから全公開記事と地域マスターをページング取得する。
 2. microCMSのコンテンツIDを記事slugにし、地域マスターから都道府県・市区町村slugを解決する。
-3. 全記事をGoogle Places Text Searchで検索し、入力された都道府県・市区町村内の最上位候補から座標を生成する。
+3. 全記事をGoogle Places Text Searchで検索し、入力された都道府県・市区町村内の最上位候補から座標とPlace IDを生成する。
 4. 表示に必要な記事・地域情報を `.generated/content.json` へアトミックに生成する。
 5. Astroは外部APIへ接続せず生成JSONだけを読み、全静的HTMLを生成する。
 6. Vercelまたはproductionコンテナが一つのdeploymentとして生成物を配信する。
@@ -60,9 +63,11 @@ microCMS取得または地域slug解決に失敗した場合はbuildを失敗さ
 
 都道府県ページのピンは地域内のおおよその位置を把握する案内として扱う。
 
+スポット詳細ページ末尾のGoogleマップはPlace IDを指定したiframeとして生成する。埋め込み用APIキーはビルド環境から直接iframe URLへ設定し、`.generated/content.json` には含めない。Place IDまたは埋め込み用キーがない場合はGoogleマップ欄を表示しない。
+
 ## Map Architecture
 
-全国地図と都道府県地図は、国土交通省「国土数値情報（行政区域データ）」を加工したSVGを使用する。MapLibre、外部地図タイル、WebGLは使用しない。
+全国地図と都道府県地図は、国土交通省「国土数値情報（行政区域データ）」を加工したSVGを使用する。MapLibre、外部地図タイル、WebGLは使用しない。スポット詳細ページだけGoogle Maps Embed APIを使用する。
 
 - 全国地図は都道府県を選択でき、hover/focus時に都道府県名を表示する。
 - 都道府県地図は公開可能な記事スポットをピンで示す。
@@ -74,7 +79,7 @@ microCMS取得または地域slug解決に失敗した場合はbuildを失敗さ
 
 Vercelとproductionコンテナの両方で次のレスポンスヘッダーを付与する。
 
-- `Content-Security-Policy`: 既定の取得元をsame-originへ制限し、object・frame埋め込みを禁止する。
+- `Content-Security-Policy`: 既定の取得元をsame-originへ制限し、objectを禁止する。frameはGoogle Maps Embed APIの配信元だけを許可する。
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `X-Frame-Options: DENY` とCSP `frame-ancestors 'none'`
@@ -94,7 +99,7 @@ Vercelとproductionコンテナの両方で次のレスポンスヘッダーを�
 
 ## Quality Gates and Supply-chain Checks
 
-GitHub Actionsはpush、Pull Request、手動実行、毎週月曜9:17（JST）に次を実行する。
+GitHub Actionsはpush、Pull Request、手動実行で次を実行する。
 
 - TypeScript型チェック、lint、Vitest、Playwright、production build
 - Gitleaksによる全Git履歴の秘密情報スキャン
@@ -103,6 +108,19 @@ GitHub Actionsはpush、Pull Request、手動実行、毎週月曜9:17（JST）�
 - CodeQL `security-extended` によるJavaScript/TypeScript解析
 
 ワークフロー権限は原則 `contents: read` とし、CodeQLだけ `security-events: write` を追加する。外部Actionとスキャナイメージはcommit SHAまたはdigestで固定する。npm、GitHub Actions、Dockerの更新はDependabotが週次確認する。
+
+週次cronは使用せず、次のタイミングで検査する。
+
+| ゲート | 実行場所 | 検査内容 |
+| --- | --- | --- |
+| pre-commit | `.githooks/pre-commit` | ステージ済み差分の秘密情報 |
+| pre-push | `.githooks/pre-push` | 専用Dockerコンテナによるmarkdownlint、全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
+| pre-merge | `.githooks/pre-merge-commit`、Pull Request CI | ローカルのmerge commit作成時は完全検査、CIでは全Git履歴、依存関係・設定、production image、CodeQL |
+| pre-deploy | mainのbranch protection、Vercel build | 必須の `quality` と `CodeQL`、production build時の必須環境変数とCMSデータ |
+
+mainは `quality` と `CodeQL` をstrict required checksとし、Pull Requestの最新commitが両方に成功してからmergeする。Gitにpre-deploy hookはないため、codeのproduction deploymentはpre-mergeの必須CIで防御し、Vercel buildは環境変数不足やCMS取得・地域slug解決失敗時に公開を拒否する。microCMSのDeploy HookはGit差分を伴わないため、同じVercel build検証をpre-deployゲートとする。これらのローカル検査は `scripts/security-check.sh` に集約し、ホストへ追加ライブラリやCLIをインストールしない。
+
+push、merge commit、Pull Requestの差分がMarkdownだけの場合は、pre-commitの秘密情報検査と専用Dockerコンテナのmarkdownlintだけを実行する。Pull Requestの `quality` と `CodeQL` はrequired check名を維持したまま、それ以外の処理をスキップして成功する。非Markdownファイルの追加・変更・削除を一つでも含む場合や差分を判定できない場合は、従来の全検査を実行する。
 
 CodeQLはAstroコンポーネントのfrontmatterから生成されるJavaScript/TypeScriptを解析するが、`.astro`テンプレート全体の構文・表示挙動を単独では保証しない。その範囲は`astro check`、ESLintのAstro推奨ルール、desktop/mobileのPlaywright E2Eで補完する。
 
