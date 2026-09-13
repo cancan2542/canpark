@@ -114,11 +114,13 @@ GitHub Actionsはpush、Pull Request、手動実行で次を実行する。
 | ゲート | 実行場所 | 検査内容 |
 | --- | --- | --- |
 | pre-commit | `.githooks/pre-commit` | ステージ済み差分の秘密情報 |
-| pre-push | `.githooks/pre-push` | 全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
+| pre-push | `.githooks/pre-push` | 専用Dockerコンテナによるmarkdownlint、全Git履歴の秘密情報、開発依存を含む依存関係、Docker設定 |
 | pre-merge | `.githooks/pre-merge-commit`、Pull Request CI | ローカルのmerge commit作成時は完全検査、CIでは全Git履歴、依存関係・設定、production image、CodeQL |
 | pre-deploy | mainのbranch protection、Vercel build | 必須の `quality` と `CodeQL`、production build時の必須環境変数とCMSデータ |
 
 mainは `quality` と `CodeQL` をstrict required checksとし、Pull Requestの最新commitが両方に成功してからmergeする。Gitにpre-deploy hookはないため、codeのproduction deploymentはpre-mergeの必須CIで防御し、Vercel buildは環境変数不足やCMS取得・地域slug解決失敗時に公開を拒否する。microCMSのDeploy HookはGit差分を伴わないため、同じVercel build検証をpre-deployゲートとする。これらのローカル検査は `scripts/security-check.sh` に集約し、ホストへ追加ライブラリやCLIをインストールしない。
+
+push、merge commit、Pull Requestの差分がMarkdownだけの場合は、pre-commitの秘密情報検査と専用Dockerコンテナのmarkdownlintだけを実行する。Pull Requestの `quality` と `CodeQL` はrequired check名を維持したまま、それ以外の処理をスキップして成功する。非Markdownファイルの追加・変更・削除を一つでも含む場合や差分を判定できない場合は、従来の全検査を実行する。
 
 CodeQLはAstroコンポーネントのfrontmatterから生成されるJavaScript/TypeScriptを解析するが、`.astro`テンプレート全体の構文・表示挙動を単独では保証しない。その範囲は`astro check`、ESLintのAstro推奨ルール、desktop/mobileのPlaywright E2Eで補完する。
 
